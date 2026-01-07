@@ -1,73 +1,63 @@
-# React + TypeScript + Vite
+# Mockify 🚀
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Mockify** is a powerful, developer-centric Chrome Extension designed to intercept and modify HTTP network requests in real-time. Whether you are debugging frontend issues, simulating edge cases, or developing without a backend, Mockify gives you full control over your application's data flow.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Framework**: [React 19](https://react.dev/)
+- **Build Tool**: [Vite](https://vitejs.dev/) with [CRXJS](https://crxjs.dev/)
+- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
+- **State**: [Zustand](https://zustand-demo.pmnd.rs/)
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Validation**: [Zod](https://zod.dev/)
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Installation (Development)
 
-## Expanding the ESLint configuration
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-repo/mockify.git
+   cd mockify
+   ```
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+2. Install dependencies:
+   ```bash
+   bun install
+   ```
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+3. Run the development server:
+   ```bash
+   bun dev
+   ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+4. Load the extension in Chrome:
+   - Go to `chrome://extensions/`
+   - Enable **Developer mode**.
+   - Click **Load unpacked**.
+   - Select the `dist` folder generated in your project directory.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Usage
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+1. Click the **Mockify** icon in your browser toolbar or open the **Options** page.
+2. Click **Create New Rule**.
+3. Enter the URL substring you want to intercept (e.g., `/api/user`).
+4. Select the response type (**JSON** or **Text**).
+5. Paste your mocked response content.
+6. Save the rule and ensure the global switch is **ACTIVE**.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Future Roadmap (TODO)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Here are the features prioritized for future development:
+
+- [ ] **Regex Matching**: Support for Regular Expressions in URL matching logic.
+- [ ] **HTTP Status Codes**: Allow setting custom status codes (e.g., 201, 400, 404, 500).
+- [ ] **Response Headers**: Mock specific HTTP response headers like `Set-Cookie` or `Authorization`.
+- [ ] **Delay Simulation**: Simulate network latency by adding a custom delay (in milliseconds) to mocked responses.
+- [ ] **JSON Syntax Highlighting**: Integrate a powerful code editor (like Monaco or CodeMirror) for the mock response textarea.
+- [ ] **Import/Export**: Bulk import/export rules via JSON files for sharing with teammates.
+- [ ] **Rule Grouping**: Organize rules into folders or tags for better management of large projects.
+- [ ] **Profile Switching**: Switch between different sets of rules (e.g., "Development", "Staging", "Edge Cases").
+- [ ] **GraphQL Support**: Match requests based on GraphQL `OperationName` or body content.
+- [ ] **Rule Priorities**: Drag-and-drop to reorder rules and define execution priority.
+
