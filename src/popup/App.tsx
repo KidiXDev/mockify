@@ -2,10 +2,18 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { useRuleStore } from '@/store/useRuleStore';
-import { useEffect } from 'react';
+import { Layers, Settings } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
 
 function App() {
-  const { rules, enabled, loading, initialize, setEnabled } = useRuleStore();
+  const {
+    profiles,
+    activeProfileId,
+    enabled,
+    loading,
+    initialize,
+    setEnabled
+  } = useRuleStore();
 
   useEffect(() => {
     const cleanup = initialize();
@@ -13,6 +21,12 @@ function App() {
       cleanup.then((fn) => fn());
     };
   }, [initialize]);
+
+  const activeProfile = useMemo(() => {
+    return profiles.find((p) => p.id === activeProfileId) || profiles[0];
+  }, [profiles, activeProfileId]);
+
+  const rules = useMemo(() => activeProfile?.rules || [], [activeProfile]);
 
   const handleToggle = (checked: boolean) => {
     setEnabled(checked);
@@ -31,7 +45,7 @@ function App() {
   }
 
   return (
-    <div className="min-w-[280px] min-h-[160px] bg-background p-5 text-foreground border border-border shadow-xl animate-in zoom-in-95 duration-300">
+    <div className="min-w-[280px] bg-background p-5 text-foreground border border-border shadow-xl">
       <div className="flex items-center gap-3 mb-5">
         <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg shadow-lg shadow-primary/20">
           M
@@ -40,7 +54,10 @@ function App() {
           <h1 className="text-lg font-semibold text-foreground tracking-tight">
             Mockify
           </h1>
-          <p className="text-xs text-muted-foreground">Response Interceptor</p>
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Layers className="w-3 h-3" />{' '}
+            {activeProfile?.name || 'Default Profile'}
+          </p>
         </div>
       </div>
 
@@ -67,31 +84,13 @@ function App() {
         onClick={openOptions}
         className="w-full gap-2 text-sm font-medium"
       >
-        <svg
-          className="w-4 h-4"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-          />
-        </svg>
-        Open Advanced Settings
+        <Settings className="w-4 h-4" />
+        Settings & Profiles
       </Button>
 
-      <div className="mt-3 text-center">
-        <span className="text-xs text-muted-foreground/50">
-          {rules.length} rule{rules.length !== 1 ? 's' : ''} configured
+      <div className="mt-4 pt-3 border-t border-border/50 text-center">
+        <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+          {rules.length} rule{rules.length !== 1 ? 's' : ''} in active profile
         </span>
       </div>
     </div>

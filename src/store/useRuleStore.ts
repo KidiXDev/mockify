@@ -1,11 +1,15 @@
-import type { MockRule } from '@/types/rule';
+import type { MockRule, Profile } from '@/types/rule';
 import { DEFAULT_STORAGE } from '@/types/rule';
 import {
   generateRuleId,
   getStorage,
+  addProfile as storageAddProfile,
   addRule as storageAddRule,
+  deleteProfile as storageDeleteProfile,
   deleteRule as storageDeleteRule,
+  duplicateRule as storageDuplicateRule,
   setEnabled as storageSetEnabled,
+  switchProfile as storageSwitchProfile,
   toggleRule as storageToggleRule,
   updateRule as storageUpdateRule
 } from '@/utils/storage';
@@ -13,7 +17,8 @@ import { create } from 'zustand';
 
 interface RuleState {
   // Storage State
-  rules: MockRule[];
+  profiles: Profile[];
+  activeProfileId: string;
   enabled: boolean;
   loading: boolean;
 
@@ -29,13 +34,21 @@ interface RuleState {
   updateRule: (rule: MockRule) => Promise<void>;
   deleteRule: (id: string) => Promise<void>;
   toggleRule: (id: string) => Promise<void>;
+  duplicateRule: (id: string) => Promise<void>;
+
+  // Profile Actions
+  addProfile: (name: string) => Promise<void>;
+  deleteProfile: (id: string) => Promise<void>;
+  switchProfile: (id: string) => Promise<void>;
+
   setEditingRule: (rule: MockRule | null) => void;
   setIsEditorOpen: (isOpen: boolean) => void;
   setSearchQuery: (query: string) => void;
 }
 
 export const useRuleStore = create<RuleState>((set) => ({
-  rules: DEFAULT_STORAGE.rules,
+  profiles: DEFAULT_STORAGE.profiles,
+  activeProfileId: DEFAULT_STORAGE.activeProfileId,
   enabled: DEFAULT_STORAGE.enabled,
   loading: true,
 
@@ -46,7 +59,8 @@ export const useRuleStore = create<RuleState>((set) => ({
   initialize: async () => {
     const data = await getStorage();
     set({
-      rules: data.rules,
+      profiles: data.profiles,
+      activeProfileId: data.activeProfileId,
       enabled: data.enabled,
       loading: false
     });
@@ -59,8 +73,11 @@ export const useRuleStore = create<RuleState>((set) => ({
         if (changes.enabled !== undefined) {
           set({ enabled: changes.enabled.newValue as boolean });
         }
-        if (changes.rules !== undefined) {
-          set({ rules: changes.rules.newValue as MockRule[] });
+        if (changes.profiles !== undefined) {
+          set({ profiles: changes.profiles.newValue as Profile[] });
+        }
+        if (changes.activeProfileId !== undefined) {
+          set({ activeProfileId: changes.activeProfileId.newValue as string });
         }
       }
     };
@@ -93,6 +110,22 @@ export const useRuleStore = create<RuleState>((set) => ({
 
   toggleRule: async (id: string) => {
     await storageToggleRule(id);
+  },
+
+  duplicateRule: async (id: string) => {
+    await storageDuplicateRule(id);
+  },
+
+  addProfile: async (name: string) => {
+    await storageAddProfile(name);
+  },
+
+  deleteProfile: async (id: string) => {
+    await storageDeleteProfile(id);
+  },
+
+  switchProfile: async (id: string) => {
+    await storageSwitchProfile(id);
   },
 
   setEditingRule: (rule: MockRule | null) => {

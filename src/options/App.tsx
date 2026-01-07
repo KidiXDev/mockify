@@ -8,24 +8,27 @@ import { Switch } from '@/components/ui/switch';
 import { useRuleStore } from '@/store/useRuleStore';
 import type { MockRule } from '@/types/rule';
 import {
-  FileCode2,
+  Activity,
+  Copy,
+  Download,
   Github,
-  MessageSquare,
+  Layers,
   Pause,
-  Play,
   Plus,
   Search,
   Settings2,
   Trash2,
+  Upload,
   Zap
 } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { RuleEditor } from './editor';
 
 function App() {
   const { confirm } = useAlert();
   const {
-    rules,
+    profiles,
+    activeProfileId,
     enabled,
     loading,
     editingRule,
@@ -37,10 +40,17 @@ function App() {
     updateRule,
     deleteRule,
     toggleRule,
+    duplicateRule,
+    addProfile,
+    deleteProfile,
+    switchProfile,
     setEditingRule,
     setIsEditorOpen,
     setSearchQuery
   } = useRuleStore();
+
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const [newProfileName, setNewProfileName] = useState('');
 
   useEffect(() => {
     const cleanup = initialize();
@@ -48,6 +58,12 @@ function App() {
       cleanup.then((fn) => fn());
     };
   }, [initialize]);
+
+  const activeProfile = useMemo(() => {
+    return profiles.find((p) => p.id === activeProfileId) || profiles[0];
+  }, [profiles, activeProfileId]);
+
+  const rules = useMemo(() => activeProfile?.rules || [], [activeProfile]);
 
   const filteredRules = useMemo(() => {
     return rules.filter(
@@ -95,6 +111,137 @@ function App() {
     }
   };
 
+  const handleAddProfile = async () => {
+    if (!newProfileName.trim()) return;
+    await addProfile(newProfileName.trim());
+    setNewProfileName('');
+    setIsProfileDialogOpen(false);
+  };
+
+  const handleDeleteProfile = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (profiles.length <= 1) return;
+
+    const profile = profiles.find((p) => p.id === id);
+    const confirmed = await confirm({
+      title: 'Delete Profile',
+      description: `Are you sure you want to delete profile "${profile?.name}"? All rules within this profile will be permanently removed.`,
+      confirmText: 'Delete Profile',
+      variant: 'danger'
+    });
+
+    if (confirmed) {
+      await deleteProfile(id);
+    }
+  };
+
+  const handleDuplicate = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await duplicateRule(id);
+  };
+
+  const handleExportRule = (rule: MockRule, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const data = JSON.stringify(rule, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mockify-rule-${rule.urlMatch.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportRule = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (re) => {
+        try {
+          const rule = JSON.parse(re.target?.result as string);
+          if (rule.urlMatch && rule.mockResponse !== undefined) {
+            // Remove ID to force new one
+            const ruleData = {
+              ...rule,
+              isRegex: rule.isRegex ?? false,
+              statusCode: rule.statusCode ?? 200,
+              delay: rule.delay ?? 0
+            };
+            delete ruleData.id;
+            await addRule(ruleData);
+          }
+        } catch {
+          confirm({
+            title: 'Import Error',
+            description: 'Invalid Rule JSON file.',
+            showCancel: false
+          });
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  const handleExportProfile = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const profile = profiles.find((p) => p.id === id);
+    if (!profile) return;
+    const data = JSON.stringify(profile, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mockify-profile-${profile.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportProfile = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (re) => {
+        try {
+          const profile = JSON.parse(re.target?.result as string);
+          if (profile.name && profile.rules) {
+            // Generate new ID and normalize rules
+            const newProfile = {
+              ...profile,
+              id: crypto.randomUUID(),
+              rules: (profile.rules as MockRule[]).map((r) => ({
+                ...r,
+                isRegex: r.isRegex ?? false,
+                statusCode: r.statusCode ?? 200,
+                delay: r.delay ?? 0
+              }))
+            };
+            const currentProfiles = [...profiles, newProfile];
+            await chrome.storage.local.set({ profiles: currentProfiles });
+          }
+        } catch {
+          confirm({
+            title: 'Import Error',
+            description: 'Invalid Profile JSON file.',
+            showCancel: false
+          });
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -104,226 +251,324 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
-      <div className="max-w-6xl mx-auto p-4 sm:p-8">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div className="flex items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-linear-to-br from-primary to-blue-600 flex items-center justify-center text-primary-foreground font-black text-3xl shadow-2xl shadow-primary/30 rotate-3">
+    <div className="flex h-screen bg-background text-foreground selection:bg-primary/30 overflow-hidden">
+      {/* Sidebar */}
+      <aside className="w-72 border-r border-border/50 bg-[#060b1d] flex flex-col shrink-0">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary to-blue-600 flex items-center justify-center text-primary-foreground font-black text-xl shadow-lg shadow-primary/20">
               M
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-foreground bg-clip-text">
+              <h1 className="text-xl font-bold tracking-tight text-foreground">
                 Mockify
               </h1>
-              <p className="text-sm text-muted-foreground font-medium flex items-center gap-2">
-                Powerful Response Interceptor
-                <span className="w-1 h-1 rounded-full bg-border" />
-                <span className="text-emerald-500 font-bold">LATEST</span>
-              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Card className="flex items-center gap-4 px-5 py-2.5 bg-secondary/30 backdrop-blur-md border-border/50 shadow-sm transition-all hover:bg-secondary/40">
-              <div className="flex flex-col">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/70">
-                  System Status
-                </span>
-                <span
-                  className={`text-xs font-bold ${enabled ? 'text-emerald-500' : 'text-muted-foreground text-opacity-50'}`}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between px-2 mb-2">
+              <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                Profiles
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setIsProfileDialogOpen(true)}
+                  className="p-1 hover:bg-primary/10 hover:text-primary rounded-md transition-colors"
+                  title="Add Profile"
                 >
-                  {enabled ? 'ACTIVE' : 'IDLE'}
-                </span>
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={handleImportProfile}
+                  className="p-1 hover:bg-primary/10 hover:text-primary rounded-md transition-colors"
+                  title="Import Profile"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <div className="h-8 w-px bg-border" />
+            </div>
+
+            <div className="space-y-1 max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar pr-2 -mr-2">
+              {profiles.map((profile) => (
+                <div key={profile.id} className="group relative">
+                  <button
+                    onClick={() => switchProfile(profile.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left relative overflow-hidden ${
+                      activeProfileId === profile.id
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground'
+                    }`}
+                  >
+                    {activeProfileId === profile.id && (
+                      <div className="absolute left-0 top-2 bottom-2 w-1 bg-primary rounded-full" />
+                    )}
+                    <Layers
+                      className={`w-4 h-4 ${activeProfileId === profile.id ? 'text-primary' : 'text-muted-foreground/50'}`}
+                    />
+                    <span className="text-sm font-semibold truncate flex-1">
+                      {profile.name}
+                    </span>
+                    <span className="text-[10px] font-bold bg-background/40 px-1.5 py-0.5 rounded-md border border-border/20 group-hover:border-border/40 transition-colors">
+                      {profile.rules.length}
+                    </span>
+
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                      <button
+                        onClick={(e) => handleExportProfile(profile.id, e)}
+                        className="p-1 hover:bg-primary hover:text-primary-foreground rounded-lg transition-all"
+                      >
+                        <Download className="w-3 h-3" />
+                      </button>
+                      {profiles.length > 1 && (
+                        <button
+                          onClick={(e) => handleDeleteProfile(profile.id, e)}
+                          className="p-1 hover:bg-destructive hover:text-destructive-foreground rounded-lg transition-all"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-auto p-6 space-y-4">
+          <Card className="p-4 bg-secondary/20 border-border/40 backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-muted-foreground">
+                Enable Mockify
+              </span>
+              <Badge
+                variant={enabled ? 'emerald' : 'secondary'}
+                className="text-[9px] px-1.5"
+              >
+                {enabled ? 'READY' : 'OFF'}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-[10px] text-muted-foreground/60 leading-tight">
+                Mockify is {enabled ? 'intercepting' : 'ignoring'} requests
+              </span>
               <Switch
                 checked={enabled}
                 onCheckedChange={(checked) => setEnabled(checked)}
               />
-            </Card>
-          </div>
-        </header>
+            </div>
+          </Card>
 
-        <div>
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
-            <div className="relative w-full sm:max-w-md">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-4">
+              <a
+                href="#"
+                className="text-muted-foreground/40 hover:text-primary transition-colors"
+              >
+                <Github className="w-4 h-4" />
+              </a>
+              <a
+                href="#"
+                className="text-muted-foreground/40 hover:text-primary transition-colors"
+              >
+                <Settings2 className="w-4 h-4" />
+              </a>
+            </div>
+            <span className="text-[10px] font-black text-muted-foreground/20 italic tracking-tighter">
+              v1.0.0
+            </span>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-w-0 bg-background/50 backdrop-blur-3xl overflow-hidden relative">
+        {/* Top Header Blur effect */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[100px] -mr-32 -mt-32 pointer-events-none" />
+
+        <header className="h-20 border-b border-border/30 flex items-center justify-between px-8 bg-background/30 backdrop-blur-md shrink-0 z-10">
+          <div className="flex flex-col">
+            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+              {activeProfile?.name}
+              <Badge
+                variant="outline"
+                className="text-[10px] font-bold border-primary/20 text-primary bg-primary/5"
+              >
+                {rules.length} Rules
+              </Badge>
+            </h2>
+            <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
+              Current Active Profile
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="relative w-64 md:w-80 group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
               <Input
-                placeholder="Search rules, URLs, or content..."
+                placeholder="Find in this profile..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-11 bg-secondary/20 border-border/50 focus:bg-background transition-all"
+                className="pl-10 h-10 bg-secondary/20 border-border/30 focus:border-primary/50 focus:bg-secondary/40 transition-all rounded-xl text-sm"
               />
             </div>
             <Button
               onClick={handleCreate}
-              className="w-full sm:w-auto h-11 px-6 gap-2 shadow-2xl shadow-primary/20 active:scale-[0.98] transition-all font-bold"
+              className="h-10 px-5 gap-2 shadow-lg shadow-primary/20 active:scale-[0.98] transition-all font-bold rounded-xl"
             >
-              <Plus className="w-5 h-5" />
-              Create New Rule
+              <Plus className="w-4 h-4" />
+              New Rule
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleImportRule}
+              className="h-10 w-10 border-border/30 hover:border-primary/30 rounded-xl"
+              title="Import Rule"
+            >
+              <Upload className="w-4 h-4" />
             </Button>
           </div>
+        </header>
 
-          {rules.length === 0 ? (
-            <Card className="p-16 text-center bg-secondary/5 border-dashed border-2 border-border/50 rounded-3xl group transition-all hover:border-primary/30">
-              <div className="w-24 h-24 mx-auto mb-8 rounded-[2.5rem] bg-primary/10 flex items-center justify-center text-4xl transform transition-transform duration-500 shadow-inner">
-                <Zap className="w-16 h-16 text-primary" />
-              </div>
-              <h3 className="text-2xl font-black text-foreground mb-4">
-                No active rules found
-              </h3>
-              <p className="text-base text-muted-foreground max-w-md mx-auto leading-relaxed mb-8">
-                Start your journey by creating your first interception rule. You
-                can mock JSON data or plain text responses with ease.
-              </p>
-              <Button
-                onClick={handleCreate}
-                variant="secondary"
-                size="lg"
-                className="px-10 h-14 rounded-2xl font-bold shadow-xl active:translate-y-1 transition-all"
-              >
-                Add Your First Rule
-              </Button>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {filteredRules.length === 0 && (
-                <div className="p-12 text-center text-muted-foreground font-medium italic">
-                  No rules match your search criteria...
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+          <div className="max-w-5xl mx-auto space-y-4">
+            {rules.length === 0 ? (
+              <Card className="p-16 text-center bg-secondary/5 border-dashed border-2 border-border/30 rounded-[2.5rem] group transition-all hover:border-primary/20">
+                <div className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-primary/5 flex items-center justify-center transform transition-transform duration-500 group-hover:scale-110">
+                  <Zap className="w-10 h-10 text-primary/50" />
                 </div>
-              )}
-              {filteredRules.map((rule) => (
-                <Card
-                  key={rule.id}
-                  onClick={() => handleEdit(rule)}
-                  className={`group relative overflow-hidden transition-all duration-300 bg-secondary/10 border-border/30 hover:border-primary/50 hover:bg-secondary/20 cursor-pointer ${
-                    !rule.enabled ? 'opacity-70' : ''
-                  }`}
+                <h3 className="text-xl font-bold text-foreground mb-2">
+                  No Interception Rules
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-8 font-medium">
+                  This profile is currently empty. Add your first rule to start
+                  intercepting and mocking requests.
+                </p>
+                <Button
+                  onClick={handleCreate}
+                  variant="secondary"
+                  className="px-8 h-12 rounded-xl font-bold bg-secondary/80 hover:bg-secondary transition-all"
                 >
-                  {/* Subtle edge highlight */}
-                  <div
-                    className={`absolute top-0 left-0 bottom-0 w-1 ${rule.enabled ? 'bg-primary' : 'bg-muted-foreground/30'}`}
-                  />
-
-                  <div className="p-5 flex flex-col md:flex-row md:items-center gap-6">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-3">
-                        <Badge
-                          variant={
-                            rule.responseType === 'json' ? 'amber' : 'blue'
-                          }
-                          className="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest rounded-md"
-                        >
-                          {rule.responseType}
-                        </Badge>
-                        <Badge
-                          variant={rule.enabled ? 'default' : 'secondary'}
-                          className={`px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest rounded-md ${
+                  Create Your First Rule
+                </Button>
+              </Card>
+            ) : (
+              <div className="grid gap-3">
+                {filteredRules.length === 0 && (
+                  <div className="p-12 text-center text-muted-foreground font-semibold italic opacity-50">
+                    No matching rules in this profile...
+                  </div>
+                )}
+                {filteredRules.map((rule) => (
+                  <Card
+                    key={rule.id}
+                    onClick={() => handleEdit(rule)}
+                    className={`group relative overflow-hidden transition-all duration-300 border-border/30 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 cursor-pointer rounded-2xl ${
+                      !rule.enabled
+                        ? 'bg-secondary/5 opacity-60'
+                        : 'bg-card/40 hover:bg-card/60'
+                    }`}
+                  >
+                    <div className="p-4 flex items-center gap-6">
+                      <div className="flex items-center gap-4 shrink-0">
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleRule(rule.id);
+                          }}
+                          className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
                             rule.enabled
-                              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                              : ''
-                          }`}
+                              ? 'bg-primary/10 text-primary'
+                              : 'bg-muted/10 text-muted-foreground'
+                          } hover:scale-105 active:scale-95`}
                         >
-                          {rule.enabled ? 'Live' : 'Paused'}
-                        </Badge>
+                          {rule.enabled ? (
+                            <Activity className="w-6 h-6" />
+                          ) : (
+                            <Pause className="w-6 h-6" />
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2 mb-2">
-                        <h4 className="text-base font-bold text-foreground font-mono truncate tracking-tight py-1 selection:bg-primary/20">
-                          {rule.urlMatch}
-                        </h4>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 max-w-sm">
-                          <p className="text-xs text-muted-foreground/60 truncate font-mono bg-background/40 px-3 py-1.5 rounded-lg border border-border/20 group-hover:border-border/40 transition-colors">
-                            {rule.mockResponse || '(Empty response)'}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="text-sm font-bold text-foreground font-mono truncate tracking-tight">
+                            {rule.urlMatch}
+                          </h4>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <p className="text-[11px] text-muted-foreground/60 truncate font-mono max-w-md">
+                            ↳ {rule.mockResponse || '(Empty response)'}
                           </p>
                         </div>
                       </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="hidden lg:flex items-center gap-1.5 mr-4 border-r border-border/50 pr-4">
+                          <Badge
+                            variant={
+                              rule.responseType === 'json' ? 'amber' : 'blue'
+                            }
+                            className="px-1.5 py-0 text-[9px] font-black uppercase tracking-tighter"
+                          >
+                            {rule.responseType}
+                          </Badge>
+                          <Badge
+                            variant="secondary"
+                            className="px-1.5 py-0 text-[9px] font-black bg-background/50 border-border/30"
+                          >
+                            {rule.statusCode || 200}
+                          </Badge>
+                          {rule.delay > 0 && (
+                            <Badge
+                              variant="secondary"
+                              className="px-1.5 py-0 text-[9px] font-black bg-background/50 border-border/30"
+                            >
+                              {rule.delay}ms
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => handleDuplicate(rule.id, e)}
+                            className="h-8 w-8 rounded-lg hover:bg-emerald-500/10 hover:text-emerald-500 transition-colors"
+                            title="Duplicate"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => handleExportRule(rule, e)}
+                            className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"
+                            title="Export"
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => handleDelete(rule.id, e)}
+                            className="h-8 w-8 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-
-                    <div className="flex items-center justify-end gap-2 shrink-0 border-t md:border-t-0 border-border/30 pt-4 md:pt-0">
-                      <div className="h-8 w-px bg-border/40 mx-2 hidden md:block" />
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleRule(rule.id);
-                        }}
-                        className={`h-10 w-10 rounded-xl transition-all ${
-                          rule.enabled
-                            ? 'text-primary hover:bg-primary/10'
-                            : 'text-muted-foreground hover:bg-secondary'
-                        }`}
-                        title={rule.enabled ? 'Pause Rule' : 'Resume Rule'}
-                      >
-                        {rule.enabled ? (
-                          <Pause className="w-5 h-5" />
-                        ) : (
-                          <Play className="w-5 h-5" />
-                        )}
-                      </Button>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(rule);
-                        }}
-                        className="h-10 w-10 rounded-xl hover:bg-blue-500/10 hover:text-blue-400"
-                        title="Edit Rule"
-                      >
-                        <Settings2 className="w-5 h-5" />
-                      </Button>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => handleDelete(rule.id, e)}
-                        className="h-10 w-10 rounded-xl hover:bg-red-500/10 hover:text-red-400"
-                        title="Delete Rule"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Footer Info */}
-        <footer className="mt-20 py-8 border-t border-border/30 flex flex-col md:flex-row items-center justify-between text-muted-foreground/50 gap-4">
-          <p className="text-xs font-medium">
-            Built for developers who demand full control.
-          </p>
-          <div className="flex items-center gap-6">
-            <a
-              href="#"
-              className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors"
-            >
-              <FileCode2 className="w-3 h-3" /> Documentation
-            </a>
-            <a
-              href="#"
-              className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors"
-            >
-              <MessageSquare className="w-3 h-3" /> Support
-            </a>
-            <a
-              href="#"
-              className="flex items-center gap-1.5 text-xs hover:text-primary transition-colors"
-            >
-              <Github className="w-3 h-3" /> Github
-            </a>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
-        </footer>
-      </div>
+        </div>
+      </main>
 
       <Dialog
         isOpen={isEditorOpen}
@@ -338,6 +583,40 @@ function App() {
           onSave={handleSave}
           onCancel={() => setIsEditorOpen(false)}
         />
+      </Dialog>
+
+      <Dialog
+        isOpen={isProfileDialogOpen}
+        onClose={() => setIsProfileDialogOpen(false)}
+        title="Create New Profile"
+        description="Profiles help you organize your rules for different environments or testing scenarios."
+        className="max-w-md"
+      >
+        <div className="p-6 space-y-4">
+          <Input
+            placeholder="Profile Name (e.g. Staging, Production Debug)"
+            value={newProfileName}
+            onChange={(e) => setNewProfileName(e.target.value)}
+            className="h-11 rounded-xl"
+            autoFocus
+          />
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              className="flex-1 rounded-xl"
+              onClick={() => setIsProfileDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1 rounded-xl"
+              onClick={handleAddProfile}
+              disabled={!newProfileName.trim()}
+            >
+              Create Profile
+            </Button>
+          </div>
+        </div>
       </Dialog>
     </div>
   );

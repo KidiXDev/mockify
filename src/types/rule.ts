@@ -2,16 +2,33 @@ export interface MockRule {
   id: string;
   enabled: boolean;
   urlMatch: string;
+  isRegex: boolean;
   responseType: 'json' | 'text';
   mockResponse: string;
+  statusCode: number;
+  delay: number; // in milliseconds
+}
+
+export interface Profile {
+  id: string;
+  name: string;
+  rules: MockRule[];
 }
 
 export interface MockifyStorage {
   enabled: boolean;
-  rules: MockRule[];
+  profiles: Profile[];
+  activeProfileId: string;
 }
 
 export const DEFAULT_STORAGE: MockifyStorage = {
   enabled: true,
-  rules: []
+  profiles: [
+    {
+      id: 'default',
+      name: 'Default Profile',
+      rules: []
+    }
+  ],
+  activeProfileId: 'default'
 };

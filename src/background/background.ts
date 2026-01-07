@@ -1,14 +1,24 @@
 import { DEFAULT_STORAGE } from '@/types/rule';
 
 chrome.runtime.onInstalled.addListener(async () => {
-  const existing = await chrome.storage.local.get(['enabled', 'rules']);
+  const existing = await chrome.storage.local.get([
+    'enabled',
+    'profiles',
+    'activeProfileId'
+  ]);
 
   if (existing.enabled === undefined) {
     await chrome.storage.local.set({ enabled: DEFAULT_STORAGE.enabled });
   }
 
-  if (existing.rules === undefined) {
-    await chrome.storage.local.set({ rules: DEFAULT_STORAGE.rules });
+  if (existing.profiles === undefined) {
+    await chrome.storage.local.set({ profiles: DEFAULT_STORAGE.profiles });
+  }
+
+  if (existing.activeProfileId === undefined) {
+    await chrome.storage.local.set({
+      activeProfileId: DEFAULT_STORAGE.activeProfileId
+    });
   }
 
   console.log('[Mockify] Extension installed/updated');

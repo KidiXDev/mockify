@@ -1,23 +1,46 @@
 import injectedRaw from '@/injected/injected.ts?script&module';
 
-interface MockifyStorage {
+interface MockRule {
+  id: string;
   enabled: boolean;
-  rules: Array<{
-    id: string;
-    enabled: boolean;
-    urlMatch: string;
-    responseType: 'json' | 'text';
-    mockResponse: string;
-  }>;
+  urlMatch: string;
+  isRegex: boolean;
+  responseType: 'json' | 'text';
+  mockResponse: string;
+  statusCode: number;
+  delay: number;
+}
+
+interface Profile {
+  id: string;
+  name: string;
+  rules: MockRule[];
+}
+
+interface MockifyConfig {
+  enabled: boolean;
+  rules: MockRule[];
 }
 
 let configSent = false;
 
 async function sendConfigToPage() {
-  const result = await chrome.storage.local.get(['enabled', 'rules']);
-  const config: MockifyStorage = {
-    enabled: (result.enabled as boolean) ?? true,
-    rules: (result.rules as MockifyStorage['rules']) ?? []
+  const result = await chrome.storage.local.get([
+    'enabled',
+    'profiles',
+    'activeProfileId'
+  ]);
+  const enabled = (result.enabled as boolean) ?? true;
+  const profiles = (result.profiles as Profile[]) ?? [];
+  const activeProfileId = (result.activeProfileId as string) || profiles[0]?.id;
+
+  const activeProfile =
+    profiles.find((p) => p.id === activeProfileId) || profiles[0];
+  const rules = activeProfile?.rules || [];
+
+  const config: MockifyConfig = {
+    enabled,
+    rules
   };
 
   window.postMessage(
@@ -33,7 +56,8 @@ async function sendConfigToPage() {
     '[Mockify Content] Config sent to page:',
     config.enabled,
     config.rules.length,
-    'rules'
+    'rules from profile:',
+    activeProfile?.name
   );
 }
 

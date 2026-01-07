@@ -50,14 +50,14 @@
 
 Here are the features prioritized for future development:
 
-- [ ] **Regex Matching**: Support for Regular Expressions in URL matching logic.
-- [ ] **HTTP Status Codes**: Allow setting custom status codes (e.g., 201, 400, 404, 500).
+- [x] **Regex Matching**: Support for Regular Expressions in URL matching logic.
+- [x] **HTTP Status Codes**: Allow setting custom status codes (e.g., 201, 400, 404, 500).
 - [ ] **Response Headers**: Mock specific HTTP response headers like `Set-Cookie` or `Authorization`.
-- [ ] **Delay Simulation**: Simulate network latency by adding a custom delay (in milliseconds) to mocked responses.
+- [x] **Delay Simulation**: Simulate network latency by adding a custom delay (in milliseconds) to mocked responses.
 - [ ] **JSON Syntax Highlighting**: Integrate a powerful code editor (like Monaco or CodeMirror) for the mock response textarea.
-- [ ] **Import/Export**: Bulk import/export rules via JSON files for sharing with teammates.
+- [x] **Import/Export**: Bulk import/export rules via JSON files for sharing with teammates.
 - [ ] **Rule Grouping**: Organize rules into folders or tags for better management of large projects.
-- [ ] **Profile Switching**: Switch between different sets of rules (e.g., "Development", "Staging", "Edge Cases").
+- [x] **Profile Switching**: Switch between different sets of rules (e.g., "Development", "Staging", "Edge Cases").
 - [ ] **GraphQL Support**: Match requests based on GraphQL `OperationName` or body content.
 - [ ] **Rule Priorities**: Drag-and-drop to reorder rules and define execution priority.
 

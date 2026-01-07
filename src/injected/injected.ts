@@ -2,8 +2,11 @@ interface MockRule {
   id: string;
   enabled: boolean;
   urlMatch: string;
+  isRegex: boolean;
   responseType: 'json' | 'text';
   mockResponse: string;
+  statusCode: number;
+  delay: number;
 }
 
 interface MockifyConfig {
@@ -25,9 +28,19 @@ interface MockifyConfig {
 
   function findMatchingRule(url: string): MockRule | undefined {
     if (!config.enabled || !configReceived) return undefined;
-    return config.rules.find(
-      (rule) => rule.enabled && url.includes(rule.urlMatch)
-    );
+    return config.rules.find((rule) => {
+      if (!rule.enabled) return false;
+      if (rule.isRegex) {
+        try {
+          const regex = new RegExp(rule.urlMatch);
+          return regex.test(url);
+        } catch (e) {
+          console.error(`[Mockify] Invalid regex: ${rule.urlMatch}`, e);
+          return false;
+        }
+      }
+      return url.includes(rule.urlMatch);
+    });
   }
 
   function createMockResponse(rule: MockRule): Response {
@@ -47,11 +60,31 @@ interface MockifyConfig {
     }
 
     return new Response(body, {
-      status: 200,
-      statusText: 'OK',
+      status: rule.statusCode || 200,
+      statusText: getStatusText(rule.statusCode || 200),
       headers: headers
     });
   }
+
+  function getStatusText(code: number): string {
+    const statusTexts: { [key: number]: string } = {
+      200: 'OK',
+      201: 'Created',
+      204: 'No Content',
+      400: 'Bad Request',
+      401: 'Unauthorized',
+      403: 'Forbidden',
+      404: 'Not Found',
+      500: 'Internal Server Error',
+      502: 'Bad Gateway',
+      503: 'Service Unavailable',
+      504: 'Gateway Timeout'
+    };
+    return statusTexts[code] || 'Unknown';
+  }
+
+  const sleep = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
 
   window.fetch = async function (
     input: RequestInfo | URL,
@@ -68,11 +101,16 @@ interface MockifyConfig {
 
     if (matchingRule) {
       console.log(
-        `%c[Mockify] Intercepted fetch: ${url}`,
+        `%c[Mockify] Intercepted fetch: ${url} (Delay: ${matchingRule.delay}ms)`,
         'color: #10b981; font-weight: bold;'
       );
+
+      if (matchingRule.delay > 0) {
+        await sleep(matchingRule.delay);
+      }
+
       window.postMessage({ type: 'MOCKIFY_MOCK_APPLIED', url }, '*');
-      return Promise.resolve(createMockResponse(matchingRule));
+      return createMockResponse(matchingRule);
     }
 
     return originalFetch.apply(window, [input, init]);
@@ -106,70 +144,71 @@ interface MockifyConfig {
 
     if (matchingRule) {
       console.log(
-        `%c[Mockify] Intercepted XHR: ${url}`,
+        `%c[Mockify] Intercepted XHR: ${url} (Delay: ${matchingRule.delay}ms)`,
         'color: #10b981; font-weight: bold;'
       );
-      window.postMessage({ type: 'MOCKIFY_MOCK_APPLIED', url }, '*');
 
-      Object.defineProperty(xhr, 'readyState', {
-        writable: true,
-        value: 4
-      });
+      const respond = () => {
+        window.postMessage({ type: 'MOCKIFY_MOCK_APPLIED', url }, '*');
 
-      Object.defineProperty(xhr, 'status', {
-        writable: true,
-        value: 200
-      });
+        Object.defineProperty(xhr, 'readyState', {
+          writable: true,
+          value: 4
+        });
 
-      Object.defineProperty(xhr, 'statusText', {
-        writable: true,
-        value: 'OK'
-      });
+        Object.defineProperty(xhr, 'status', {
+          writable: true,
+          value: matchingRule.statusCode || 200
+        });
 
-      let responseBody = matchingRule.mockResponse;
-      if (matchingRule.responseType === 'json') {
-        try {
-          JSON.parse(matchingRule.mockResponse);
-        } catch {
-          responseBody = JSON.stringify({
-            error: 'Invalid JSON in mock response'
-          });
+        Object.defineProperty(xhr, 'statusText', {
+          writable: true,
+          value: getStatusText(matchingRule.statusCode || 200)
+        });
+
+        let responseBody = matchingRule.mockResponse;
+        if (matchingRule.responseType === 'json') {
+          try {
+            JSON.parse(matchingRule.mockResponse);
+          } catch {
+            responseBody = JSON.stringify({
+              error: 'Invalid JSON in mock response'
+            });
+          }
         }
-      }
 
-      Object.defineProperty(xhr, 'responseText', {
-        writable: true,
-        value: responseBody
-      });
+        Object.defineProperty(xhr, 'responseText', {
+          writable: true,
+          value: responseBody
+        });
 
-      Object.defineProperty(xhr, 'response', {
-        writable: true,
-        value: responseBody
-      });
+        Object.defineProperty(xhr, 'response', {
+          writable: true,
+          value: responseBody
+        });
 
-      const responseHeaders =
-        matchingRule.responseType === 'json'
-          ? 'content-type: application/json\r\nx-mockify: true'
-          : 'content-type: text/plain\r\nx-mockify: true';
+        const responseHeaders =
+          matchingRule.responseType === 'json'
+            ? `content-type: application/json\r\nx-mockify: true`
+            : `content-type: text/plain\r\nx-mockify: true`;
 
-      xhr.getAllResponseHeaders = function () {
-        return responseHeaders;
-      };
+        xhr.getAllResponseHeaders = function () {
+          return responseHeaders;
+        };
 
-      xhr.getResponseHeader = function (name: string): string | null {
-        const lower = name.toLowerCase();
-        if (lower === 'content-type') {
-          return matchingRule.responseType === 'json'
-            ? 'application/json'
-            : 'text/plain';
-        }
-        if (lower === 'x-mockify') {
-          return 'true';
-        }
-        return null;
-      };
+        xhr.getResponseHeader = function (name: string): string | null {
+          const lower = name.toLowerCase();
+          if (lower === 'content-type') {
+            return matchingRule.responseType === 'json'
+              ? 'application/json'
+              : 'text/plain';
+          }
+          if (lower === 'x-mockify') {
+            return 'true';
+          }
+          return null;
+        };
 
-      setTimeout(() => {
         const readyStateEvent = new Event('readystatechange');
         xhr.dispatchEvent(readyStateEvent);
 
@@ -196,7 +235,13 @@ interface MockifyConfig {
         if (typeof xhr.onloadend === 'function') {
           xhr.onloadend(loadEndEvent);
         }
-      }, 0);
+      };
+
+      if (matchingRule.delay > 0) {
+        setTimeout(respond, matchingRule.delay);
+      } else {
+        setTimeout(respond, 0);
+      }
 
       return;
     }
