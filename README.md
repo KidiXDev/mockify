@@ -6,10 +6,8 @@
 
 - **Framework**: [React 19](https://react.dev/)
 - **Build Tool**: [Vite](https://vitejs.dev/) with [CRXJS](https://crxjs.dev/)
-- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
-- **State**: [Zustand](https://zustand-demo.pmnd.rs/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **Icons**: [Lucide React](https://lucide.dev/)
-- **Validation**: [Zod](https://zod.dev/)
 
 ## Getting Started
 
@@ -46,15 +44,13 @@
 5. Paste your mocked response content.
 6. Save the rule and ensure the global switch is **ACTIVE**.
 
-## Future Roadmap (TODO)
-
-Here are the features prioritized for future development:
+## Todo
 
 - [x] **Regex Matching**: Support for Regular Expressions in URL matching logic.
 - [x] **HTTP Status Codes**: Allow setting custom status codes (e.g., 201, 400, 404, 500).
 - [ ] **Response Headers**: Mock specific HTTP response headers like `Set-Cookie` or `Authorization`.
 - [x] **Delay Simulation**: Simulate network latency by adding a custom delay (in milliseconds) to mocked responses.
-- [ ] **JSON Syntax Highlighting**: Integrate a powerful code editor (like Monaco or CodeMirror) for the mock response textarea.
+- [x] **JSON Syntax Highlighting**: Integrate a powerful code editor (like Monaco or CodeMirror) for the mock response textarea.
 - [x] **Import/Export**: Bulk import/export rules via JSON files for sharing with teammates.
 - [ ] **Rule Grouping**: Organize rules into folders or tags for better management of large projects.
 - [x] **Profile Switching**: Switch between different sets of rules (e.g., "Development", "Staging", "Edge Cases").
