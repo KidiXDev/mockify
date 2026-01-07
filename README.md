@@ -1,13 +1,6 @@
-# Mockify 🚀
+# Mockify
 
 **Mockify** is a powerful, developer-centric Chrome Extension designed to intercept and modify HTTP network requests in real-time. Whether you are debugging frontend issues, simulating edge cases, or developing without a backend, Mockify gives you full control over your application's data flow.
-
-## Tech Stack
-
-- **Framework**: [React 19](https://react.dev/)
-- **Build Tool**: [Vite](https://vitejs.dev/) with [CRXJS](https://crxjs.dev/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **Icons**: [Lucide React](https://lucide.dev/)
 
 ## Getting Started
 
