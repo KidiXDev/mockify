@@ -557,6 +557,24 @@ function App() {
 
                       <div className="flex items-center gap-3 shrink-0">
                         <div className="hidden lg:flex items-center gap-1.5 mr-4 border-r border-border/50 pr-4">
+                          {rule.mode && rule.mode !== 'mock' && (
+                            <Badge
+                              variant={
+                                rule.mode === 'record'
+                                  ? 'amber'
+                                  : rule.mode === 'replay'
+                                    ? 'purple'
+                                    : 'secondary'
+                              }
+                              className="px-1.5 py-0 text-[9px] font-black uppercase tracking-tighter"
+                            >
+                              {rule.mode === 'record'
+                                ? '🔴 REC'
+                                : rule.mode === 'replay'
+                                  ? '▶️ REPLAY'
+                                  : rule.mode}
+                            </Badge>
+                          )}
                           <Badge
                             variant={
                               rule.responseType === 'json' ? 'amber' : 'blue'
@@ -579,6 +597,16 @@ function App() {
                               {rule.delay}ms
                             </Badge>
                           )}
+                          {rule.mode === 'replay' &&
+                            rule.capturedResponses &&
+                            rule.capturedResponses.length > 0 && (
+                              <Badge
+                                variant="purple"
+                                className="px-1.5 py-0 text-[9px] font-black"
+                              >
+                                {rule.capturedResponses.length} captured
+                              </Badge>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-1">
