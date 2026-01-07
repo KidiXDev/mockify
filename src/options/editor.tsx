@@ -2,10 +2,14 @@ import { useAlert } from '@/components/providers/alert-provider';
 import { Button } from '@/components/ui/button';
 import { DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Select, SelectGroup, SelectItem } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import type { MockRule } from '@/types/rule';
+import { json } from '@codemirror/lang-json';
+import { oneDark } from '@codemirror/theme-one-dark';
+import { EditorView } from '@codemirror/view';
+import CodeMirror from '@uiw/react-codemirror';
 import { Activity, Clock, Code2, FileJson, Link2 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -126,57 +130,42 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
               Status Code
             </label>
             <div className="relative group">
-              <select
-                value={formData.statusCode}
-                onChange={(e) =>
+              <Select
+                value={String(formData.statusCode)}
+                onValueChange={(val: string | number) =>
                   setFormData({
                     ...formData,
-                    statusCode: parseInt(e.target.value) || 200
+                    statusCode:
+                      typeof val === 'string' ? parseInt(val) || 200 : val
                   })
                 }
-                className="w-full h-10 px-3 pr-8 rounded-md bg-background/50 border border-border/50 focus:border-primary/50 text-sm appearance-none outline-none cursor-pointer transition-all hover:bg-background/80"
               >
-                <optgroup label="2xx Success">
-                  <option value={200}>200 OK</option>
-                  <option value={201}>201 Created</option>
-                  <option value={204}>204 No Content</option>
-                </optgroup>
-                <optgroup label="3xx Redirection">
-                  <option value={301}>301 Moved Permanently</option>
-                  <option value={302}>302 Found</option>
-                  <option value={307}>307 Temporary Redirect</option>
-                </optgroup>
-                <optgroup label="4xx Client Error">
-                  <option value={400}>400 Bad Request</option>
-                  <option value={401}>401 Unauthorized</option>
-                  <option value={403}>403 Forbidden</option>
-                  <option value={404}>404 Not Found</option>
-                  <option value={409}>409 Conflict</option>
-                  <option value={422}>422 Unprocessable Content</option>
-                  <option value={429}>429 Too Many Requests</option>
-                </optgroup>
-                <optgroup label="5xx Server Error">
-                  <option value={500}>500 Internal Server Error</option>
-                  <option value={502}>502 Bad Gateway</option>
-                  <option value={503}>503 Service Unavailable</option>
-                  <option value={504}>504 Gateway Timeout</option>
-                </optgroup>
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity">
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
+                <SelectGroup label="2xx Success">
+                  <SelectItem value="200">200 OK</SelectItem>
+                  <SelectItem value="201">201 Created</SelectItem>
+                  <SelectItem value="204">204 No Content</SelectItem>
+                </SelectGroup>
+                <SelectGroup label="3xx Redirection">
+                  <SelectItem value="301">301 Moved Permanently</SelectItem>
+                  <SelectItem value="302">302 Found</SelectItem>
+                  <SelectItem value="307">307 Temporary Redirect</SelectItem>
+                </SelectGroup>
+                <SelectGroup label="4xx Client Error">
+                  <SelectItem value="400">400 Bad Request</SelectItem>
+                  <SelectItem value="401">401 Unauthorized</SelectItem>
+                  <SelectItem value="403">403 Forbidden</SelectItem>
+                  <SelectItem value="404">404 Not Found</SelectItem>
+                  <SelectItem value="409">409 Conflict</SelectItem>
+                  <SelectItem value="422">422 Unprocessable Content</SelectItem>
+                  <SelectItem value="429">429 Too Many Requests</SelectItem>
+                </SelectGroup>
+                <SelectGroup label="5xx Server Error">
+                  <SelectItem value="500">500 Internal Server Error</SelectItem>
+                  <SelectItem value="502">502 Bad Gateway</SelectItem>
+                  <SelectItem value="503">503 Service Unavailable</SelectItem>
+                  <SelectItem value="504">504 Gateway Timeout</SelectItem>
+                </SelectGroup>
+              </Select>
             </div>
           </div>
           <div className="space-y-2">
@@ -257,21 +246,142 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
               </div>
             )}
           </div>
-          <div className="relative group">
-            <Textarea
+          <div className="relative group border border-border/50 rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/50 transition-all bg-card">
+            <CodeMirror
               value={formData.mockResponse}
-              onChange={(e) =>
-                setFormData({ ...formData, mockResponse: e.target.value })
+              height="min(30vh, 400px)"
+              theme={oneDark}
+              extensions={
+                formData.responseType === 'json'
+                  ? [
+                      json(),
+                      EditorView.lineWrapping,
+                      EditorView.theme({
+                        '&': {
+                          backgroundColor: 'transparent !important',
+                          lineHeight: '1.5',
+                          fontSize: '12px'
+                        },
+                        '.cm-gutters': {
+                          backgroundColor: 'transparent !important',
+                          border: 'none'
+                        },
+                        '.cm-content': {
+                          padding: '8px 0',
+                          height: 'auto !important'
+                        },
+                        '.cm-cursor': {
+                          height: '1.2em !important'
+                        },
+                        '.cm-placeholder': {
+                          position: 'absolute !important',
+                          left: '8px',
+                          color: 'var(--color-muted-foreground) !important',
+                          opacity: '0.4',
+                          whiteSpace: 'pre-wrap',
+                          pointerEvents: 'none'
+                        },
+                        '.cm-line': {
+                          position: 'relative',
+                          lineHeight: '1.5',
+                          padding: '0 8px'
+                        },
+                        '.cm-scroller::-webkit-scrollbar': {
+                          width: '6px',
+                          height: '6px'
+                        },
+                        '.cm-scroller::-webkit-scrollbar-track': {
+                          background: 'transparent'
+                        },
+                        '.cm-scroller::-webkit-scrollbar-thumb': {
+                          background: 'var(--color-border)',
+                          borderRadius: '10px'
+                        },
+                        '.cm-scroller::-webkit-scrollbar-thumb:hover': {
+                          background: '#334155'
+                        }
+                      })
+                    ]
+                  : [
+                      EditorView.theme({
+                        '&': {
+                          backgroundColor: 'transparent !important',
+                          lineHeight: '1.5',
+                          fontSize: '12px'
+                        },
+                        '.cm-gutters': {
+                          backgroundColor: 'transparent !important',
+                          border: 'none'
+                        },
+                        '.cm-content': {
+                          padding: '8px 0',
+                          height: 'auto !important'
+                        },
+                        '.cm-cursor': {
+                          height: '1.2em !important'
+                        },
+                        '.cm-placeholder': {
+                          position: 'absolute !important',
+                          left: '8px',
+                          color: 'var(--color-muted-foreground) !important',
+                          opacity: '0.4',
+                          whiteSpace: 'pre-wrap',
+                          pointerEvents: 'none'
+                        },
+                        '.cm-line': {
+                          position: 'relative',
+                          lineHeight: '1.5',
+                          padding: '0 8px'
+                        },
+                        '.cm-scroller::-webkit-scrollbar': {
+                          width: '6px',
+                          height: '6px'
+                        },
+                        '.cm-scroller::-webkit-scrollbar-track': {
+                          background: 'transparent'
+                        },
+                        '.cm-scroller::-webkit-scrollbar-thumb': {
+                          background: 'var(--color-border)',
+                          borderRadius: '10px'
+                        },
+                        '.cm-scroller::-webkit-scrollbar-thumb:hover': {
+                          background: '#334155'
+                        }
+                      })
+                    ]
+              }
+              onChange={(value) =>
+                setFormData({ ...formData, mockResponse: value })
               }
               placeholder={
                 formData.responseType === 'json'
                   ? '{\n  "success": true,\n  "data": []\n}'
                   : 'Hello World'
               }
-              className="font-mono text-xs leading-relaxed resize-none min-h-[150px] h-[30vh] bg-background/50 border-border/50 focus:border-primary/50 custom-scrollbar p-4"
+              className="text-xs font-mono"
+              basicSetup={{
+                lineNumbers: false,
+                foldGutter: false,
+                dropCursor: true,
+                allowMultipleSelections: false,
+                indentOnInput: true,
+                bracketMatching: true,
+                closeBrackets: true,
+                autocompletion: true,
+                rectangularSelection: true,
+                crosshairCursor: true,
+                highlightActiveLine: false,
+                highlightSelectionMatches: true,
+                searchKeymap: false,
+                historyKeymap: false,
+                drawSelection: false,
+                tabSize: 2
+              }}
             />
-            <div className="absolute bottom-4 right-4 text-[10px] text-muted-foreground/50 font-mono pointer-events-none">
-              {formData.mockResponse.length} chars
+            <div className="flex items-center justify-end px-3 py-1.5 bg-background/40 border-t border-border/30">
+              <span className="text-[10px] text-muted-foreground/60 font-mono">
+                {formData.mockResponse.length} characters
+              </span>
             </div>
           </div>
         </div>

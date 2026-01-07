@@ -23,6 +23,7 @@ interface RuleState {
   loading: boolean;
 
   // UI State
+  viewingProfileId: string;
   editingRule: MockRule | null;
   isEditorOpen: boolean;
   searchQuery: string;
@@ -37,13 +38,14 @@ interface RuleState {
   duplicateRule: (id: string) => Promise<void>;
 
   // Profile Actions
-  addProfile: (name: string) => Promise<void>;
+  addProfile: (name: string) => Promise<string>;
   deleteProfile: (id: string) => Promise<void>;
   switchProfile: (id: string) => Promise<void>;
 
   setEditingRule: (rule: MockRule | null) => void;
   setIsEditorOpen: (isOpen: boolean) => void;
   setSearchQuery: (query: string) => void;
+  setViewingProfile: (id: string) => void;
 }
 
 export const useRuleStore = create<RuleState>((set) => ({
@@ -52,6 +54,7 @@ export const useRuleStore = create<RuleState>((set) => ({
   enabled: DEFAULT_STORAGE.enabled,
   loading: true,
 
+  viewingProfileId: DEFAULT_STORAGE.activeProfileId,
   editingRule: null,
   isEditorOpen: false,
   searchQuery: '',
@@ -61,6 +64,7 @@ export const useRuleStore = create<RuleState>((set) => ({
     set({
       profiles: data.profiles,
       activeProfileId: data.activeProfileId,
+      viewingProfileId: data.activeProfileId,
       enabled: data.enabled,
       loading: false
     });
@@ -117,7 +121,7 @@ export const useRuleStore = create<RuleState>((set) => ({
   },
 
   addProfile: async (name: string) => {
-    await storageAddProfile(name);
+    return await storageAddProfile(name);
   },
 
   deleteProfile: async (id: string) => {
@@ -138,5 +142,8 @@ export const useRuleStore = create<RuleState>((set) => ({
 
   setSearchQuery: (query: string) => {
     set({ searchQuery: query });
+  },
+  setViewingProfile: (id: string) => {
+    set({ viewingProfileId: id });
   }
 }));

@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Select, SelectItem } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useRuleStore } from '@/store/useRuleStore';
-import { Layers, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 
 function App() {
@@ -12,7 +13,8 @@ function App() {
     enabled,
     loading,
     initialize,
-    setEnabled
+    setEnabled,
+    switchProfile
   } = useRuleStore();
 
   useEffect(() => {
@@ -46,18 +48,35 @@ function App() {
 
   return (
     <div className="min-w-[280px] bg-background p-5 text-foreground border border-border shadow-xl">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg shadow-lg shadow-primary/20">
-          M
-        </div>
-        <div>
+      <div className="mb-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg shadow-lg shadow-primary/20">
+            M
+          </div>
           <h1 className="text-lg font-semibold text-foreground tracking-tight">
             Mockify
           </h1>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <Layers className="w-3 h-3" />{' '}
-            {activeProfile?.name || 'Default Profile'}
-          </p>
+        </div>
+
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest px-1">
+            Active Profile
+          </span>
+          <Select
+            value={activeProfileId}
+            onValueChange={(id) => switchProfile(id as string)}
+            className="h-9 text-xs mt-2"
+          >
+            {profiles.map((profile) => (
+              <SelectItem
+                key={profile.id}
+                value={profile.id}
+                className="text-xs"
+              >
+                {profile.name}
+              </SelectItem>
+            ))}
+          </Select>
         </div>
       </div>
 

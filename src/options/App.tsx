@@ -29,6 +29,7 @@ function App() {
   const {
     profiles,
     activeProfileId,
+    viewingProfileId,
     enabled,
     loading,
     editingRule,
@@ -46,7 +47,8 @@ function App() {
     switchProfile,
     setEditingRule,
     setIsEditorOpen,
-    setSearchQuery
+    setSearchQuery,
+    setViewingProfile
   } = useRuleStore();
 
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
@@ -59,11 +61,11 @@ function App() {
     };
   }, [initialize]);
 
-  const activeProfile = useMemo(() => {
-    return profiles.find((p) => p.id === activeProfileId) || profiles[0];
-  }, [profiles, activeProfileId]);
+  const viewingProfile = useMemo(() => {
+    return profiles.find((p) => p.id === viewingProfileId) || profiles[0];
+  }, [profiles, viewingProfileId]);
 
-  const rules = useMemo(() => activeProfile?.rules || [], [activeProfile]);
+  const rules = useMemo(() => viewingProfile?.rules || [], [viewingProfile]);
 
   const filteredRules = useMemo(() => {
     return rules.filter(
@@ -113,7 +115,8 @@ function App() {
 
   const handleAddProfile = async () => {
     if (!newProfileName.trim()) return;
-    await addProfile(newProfileName.trim());
+    const newId = await addProfile(newProfileName.trim());
+    setViewingProfile(newId);
     setNewProfileName('');
     setIsProfileDialogOpen(false);
   };
@@ -291,45 +294,57 @@ function App() {
 
             <div className="space-y-1 max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar pr-2 -mr-2">
               {profiles.map((profile) => (
-                <div key={profile.id} className="group relative">
-                  <button
-                    onClick={() => switchProfile(profile.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left relative overflow-hidden ${
-                      activeProfileId === profile.id
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground'
-                    }`}
-                  >
-                    {activeProfileId === profile.id && (
-                      <div className="absolute left-0 top-2 bottom-2 w-1 bg-primary rounded-full" />
-                    )}
-                    <Layers
-                      className={`w-4 h-4 ${activeProfileId === profile.id ? 'text-primary' : 'text-muted-foreground/50'}`}
+                <div
+                  key={profile.id}
+                  onClick={() => setViewingProfile(profile.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left relative overflow-hidden cursor-pointer group ${
+                    viewingProfileId === profile.id
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground'
+                  }`}
+                >
+                  {viewingProfileId === profile.id && (
+                    <div className="absolute left-0 top-2 bottom-2 w-1 bg-primary rounded-full" />
+                  )}
+                  {activeProfileId === profile.id && (
+                    <div
+                      className="absolute right-0 top-0 bottom-0 w-1 bg-emerald-500/50"
+                      title="Globally Active"
                     />
-                    <span className="text-sm font-semibold truncate flex-1">
+                  )}
+                  <Layers
+                    className={`w-4 h-4 ${viewingProfileId === profile.id ? 'text-primary' : 'text-muted-foreground/50'}`}
+                  />
+                  <div className="flex-1 flex flex-col min-w-0">
+                    <span className="text-sm font-semibold truncate">
                       {profile.name}
                     </span>
-                    <span className="text-[10px] font-bold bg-background/40 px-1.5 py-0.5 rounded-md border border-border/20 group-hover:border-border/40 transition-colors">
-                      {profile.rules.length}
-                    </span>
+                    {activeProfileId === profile.id && (
+                      <span className="text-[8px] font-black text-emerald-500 uppercase tracking-tighter -mt-0.5">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-bold bg-background/40 px-1.5 py-0.5 rounded-md border border-border/20 group-hover:border-border/40 transition-colors">
+                    {profile.rules.length}
+                  </span>
 
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                    <button
+                      onClick={(e) => handleExportProfile(profile.id, e)}
+                      className="p-1 hover:bg-primary hover:text-primary-foreground rounded-lg transition-all"
+                    >
+                      <Download className="w-3 h-3" />
+                    </button>
+                    {profiles.length > 1 && (
                       <button
-                        onClick={(e) => handleExportProfile(profile.id, e)}
-                        className="p-1 hover:bg-primary hover:text-primary-foreground rounded-lg transition-all"
+                        onClick={(e) => handleDeleteProfile(profile.id, e)}
+                        className="p-1 hover:bg-destructive hover:text-destructive-foreground rounded-lg transition-all"
                       >
-                        <Download className="w-3 h-3" />
+                        <Trash2 className="w-3 h-3" />
                       </button>
-                      {profiles.length > 1 && (
-                        <button
-                          onClick={(e) => handleDeleteProfile(profile.id, e)}
-                          className="p-1 hover:bg-destructive hover:text-destructive-foreground rounded-lg transition-all"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -363,7 +378,9 @@ function App() {
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-4">
               <a
-                href="#"
+                href="https://github.com/kidixdev/mockify"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-muted-foreground/40 hover:text-primary transition-colors"
               >
                 <Github className="w-4 h-4" />
@@ -390,16 +407,35 @@ function App() {
         <header className="h-20 border-b border-border/30 flex items-center justify-between px-8 bg-background/30 backdrop-blur-md shrink-0 z-10">
           <div className="flex flex-col">
             <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-              {activeProfile?.name}
+              {viewingProfile?.name}
               <Badge
                 variant="outline"
                 className="text-[10px] font-bold border-primary/20 text-primary bg-primary/5"
               >
                 {rules.length} Rules
               </Badge>
+              {activeProfileId === viewingProfileId ? (
+                <Badge
+                  variant="emerald"
+                  className="text-[9px] font-black uppercase"
+                >
+                  Active
+                </Badge>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => switchProfile(viewingProfileId)}
+                  className="h-6 px-2 text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white transition-all rounded-md"
+                >
+                  Set as Active
+                </Button>
+              )}
             </h2>
             <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">
-              Current Active Profile
+              {activeProfileId === viewingProfileId
+                ? 'Globally active profile'
+                : 'Viewing profile (Inactive)'}
             </p>
           </div>
 
@@ -436,7 +472,7 @@ function App() {
           <div className="max-w-5xl mx-auto space-y-4">
             {rules.length === 0 ? (
               <Card className="p-16 text-center bg-secondary/5 border-dashed border-2 border-border/30 rounded-[2.5rem] group transition-all hover:border-primary/20">
-                <div className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-primary/5 flex items-center justify-center transform transition-transform duration-500 group-hover:scale-110">
+                <div className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-primary/5 flex items-center justify-center transform transition-transform duration-500">
                   <Zap className="w-10 h-10 text-primary/50" />
                 </div>
                 <h3 className="text-xl font-bold text-foreground mb-2">

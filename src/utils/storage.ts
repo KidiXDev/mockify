@@ -119,15 +119,17 @@ export async function switchProfile(profileId: string): Promise<void> {
   await chrome.storage.local.set({ activeProfileId: profileId });
 }
 
-export async function addProfile(name: string): Promise<void> {
+export async function addProfile(name: string): Promise<string> {
   const storage = await getStorage();
+  const id = crypto.randomUUID();
   const newProfile: Profile = {
-    id: crypto.randomUUID(),
+    id,
     name,
     rules: []
   };
   storage.profiles.push(newProfile);
   await chrome.storage.local.set({ profiles: storage.profiles });
+  return id;
 }
 
 export async function deleteProfile(id: string): Promise<void> {
