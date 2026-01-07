@@ -15,6 +15,7 @@
   --color-border: #1e293b;
   --color-input: #1e293b;
   --color-ring: #3b82f6;
+  --color-destructive: #ef4444;
 }
 
 @layer base {

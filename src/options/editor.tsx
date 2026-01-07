@@ -5,12 +5,21 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectGroup, SelectItem } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import type { MockRule } from '@/types/rule';
 import { json } from '@codemirror/lang-json';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView } from '@codemirror/view';
 import CodeMirror from '@uiw/react-codemirror';
-import { Activity, Clock, Code2, FileJson, Link2 } from 'lucide-react';
+import {
+  Activity,
+  Clock,
+  Code2,
+  FileJson,
+  FileText,
+  Link2,
+  Tag
+} from 'lucide-react';
 import { useState } from 'react';
 
 interface RuleEditorProps {
@@ -22,6 +31,8 @@ interface RuleEditorProps {
 export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
   const { confirm } = useAlert();
   const [formData, setFormData] = useState({
+    name: initialData?.name ?? '',
+    description: initialData?.description ?? '',
     urlMatch: initialData?.urlMatch ?? '',
     isRegex: initialData?.isRegex ?? false,
     responseType: initialData?.responseType ?? ('json' as 'json' | 'text'),
@@ -78,6 +89,42 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
   return (
     <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
       <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+            <Tag className="w-4 h-4 text-primary" />
+            Rule Name
+            <span className="text-[10px] text-muted-foreground/60 font-normal">
+              (optional)
+            </span>
+          </label>
+          <Input
+            type="text"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="e.g. Mock User API"
+            className="bg-background/50 border-border/50 focus:border-primary/50"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" />
+            Description
+            <span className="text-[10px] text-muted-foreground/60 font-normal">
+              (optional)
+            </span>
+          </label>
+          <Textarea
+            value={formData.description}
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+            placeholder="e.g. Returns mock user data for testing purposes"
+            className="bg-background/50 border-border/50 focus:border-primary/50 min-h-[60px] resize-none"
+            rows={2}
+          />
+        </div>
+
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">

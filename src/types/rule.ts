@@ -1,5 +1,7 @@
 export interface MockRule {
   id: string;
+  name?: string;
+  description?: string;
   enabled: boolean;
   urlMatch: string;
   isRegex: boolean;

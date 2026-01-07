@@ -286,7 +286,14 @@ async function init() {
 
   chrome.storage.onChanged.addListener(async (changes, areaName) => {
     if (areaName === 'local') {
-      if (changes.enabled !== undefined || changes.rules !== undefined) {
+      if (
+        changes.enabled !== undefined ||
+        changes.profiles !== undefined ||
+        changes.activeProfileId !== undefined
+      ) {
+        console.log(
+          '[Mockify Content] Storage changed, sending updated config'
+        );
         await sendConfigToPage();
       }
     }

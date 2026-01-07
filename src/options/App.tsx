@@ -68,10 +68,13 @@ function App() {
   const rules = useMemo(() => viewingProfile?.rules || [], [viewingProfile]);
 
   const filteredRules = useMemo(() => {
+    const query = searchQuery.toLowerCase();
     return rules.filter(
       (rule) =>
-        rule.urlMatch.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        rule.mockResponse.toLowerCase().includes(searchQuery.toLowerCase())
+        rule.urlMatch.toLowerCase().includes(query) ||
+        rule.mockResponse.toLowerCase().includes(query) ||
+        (rule.name && rule.name.toLowerCase().includes(query)) ||
+        (rule.description && rule.description.toLowerCase().includes(query))
     );
   }, [rules, searchQuery]);
 
@@ -530,14 +533,27 @@ function App() {
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className="text-sm font-bold text-foreground font-mono truncate tracking-tight">
-                            {rule.urlMatch}
+                          <h4 className="text-sm font-bold text-foreground truncate tracking-tight">
+                            {rule.name || rule.urlMatch}
                           </h4>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <p className="text-[11px] text-muted-foreground/60 truncate font-mono max-w-md">
-                            ↳ {rule.mockResponse || '(Empty response)'}
-                          </p>
+                        <div className="flex flex-col gap-0.5">
+                          {rule.name && (
+                            <p className="text-[11px] text-muted-foreground/80 truncate font-mono max-w-md">
+                              {rule.urlMatch}
+                            </p>
+                          )}
+                          {rule.description ? (
+                            <p className="text-[11px] text-muted-foreground/60 truncate max-w-md">
+                              {rule.description}
+                            </p>
+                          ) : (
+                            !rule.name && (
+                              <p className="text-[11px] text-muted-foreground/60 truncate font-mono max-w-md">
+                                ↳ {rule.mockResponse || '(Empty response)'}
+                              </p>
+                            )
+                          )}
                         </div>
                       </div>
 
