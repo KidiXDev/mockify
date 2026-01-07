@@ -1,10 +1,18 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { useStorage } from '@/hooks/useStorage';
+import { useRuleStore } from '@/store/useRuleStore';
+import { useEffect } from 'react';
 
 function App() {
-  const { storage, loading, setEnabled } = useStorage();
+  const { rules, enabled, loading, initialize, setEnabled } = useRuleStore();
+
+  useEffect(() => {
+    const cleanup = initialize();
+    return () => {
+      cleanup.then((fn) => fn());
+    };
+  }, [initialize]);
 
   const handleToggle = (checked: boolean) => {
     setEnabled(checked);
@@ -41,16 +49,16 @@ function App() {
           <div className="flex items-center gap-3">
             <div
               className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                storage.enabled
+                enabled
                   ? 'bg-primary shadow-[0_0_8px_rgba(59,130,246,0.5)]'
                   : 'bg-muted-foreground/30'
               }`}
             />
             <span className="text-sm text-muted-foreground font-medium">
-              {storage.enabled ? 'Active' : 'Disabled'}
+              {enabled ? 'Active' : 'Disabled'}
             </span>
           </div>
-          <Switch checked={storage.enabled} onCheckedChange={handleToggle} />
+          <Switch checked={enabled} onCheckedChange={handleToggle} />
         </div>
       </Card>
 
@@ -83,8 +91,7 @@ function App() {
 
       <div className="mt-3 text-center">
         <span className="text-xs text-muted-foreground/50">
-          {storage.rules.length} rule{storage.rules.length !== 1 ? 's' : ''}{' '}
-          configured
+          {rules.length} rule{rules.length !== 1 ? 's' : ''} configured
         </span>
       </div>
     </div>

@@ -53,5 +53,5 @@ export async function toggleRule(id: string): Promise<void> {
 }
 
 export function generateRuleId(): string {
-  return `rule_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  return crypto.randomUUID();
 }

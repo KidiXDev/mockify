@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { useStorage } from '@/hooks/useStorage';
+import { useRuleStore } from '@/store/useRuleStore';
 import type { MockRule } from '@/types/rule';
 import {
   FileCode2,
@@ -19,32 +19,43 @@ import {
   Trash2,
   Zap
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { RuleEditor } from './editor';
 
 function App() {
   const { confirm } = useAlert();
   const {
-    storage,
+    rules,
+    enabled,
     loading,
+    editingRule,
+    isEditorOpen,
+    searchQuery,
+    initialize,
     setEnabled,
     addRule,
     updateRule,
     deleteRule,
-    toggleRule
-  } = useStorage();
+    toggleRule,
+    setEditingRule,
+    setIsEditorOpen,
+    setSearchQuery
+  } = useRuleStore();
 
-  const [editingRule, setEditingRule] = useState<MockRule | null>(null);
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  useEffect(() => {
+    const cleanup = initialize();
+    return () => {
+      cleanup.then((fn) => fn());
+    };
+  }, [initialize]);
 
   const filteredRules = useMemo(() => {
-    return storage.rules.filter(
+    return rules.filter(
       (rule) =>
         rule.urlMatch.toLowerCase().includes(searchQuery.toLowerCase()) ||
         rule.mockResponse.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [storage.rules, searchQuery]);
+  }, [rules, searchQuery]);
 
   const handleCreate = () => {
     setEditingRule(null);
@@ -119,14 +130,14 @@ function App() {
                   System Status
                 </span>
                 <span
-                  className={`text-xs font-bold ${storage.enabled ? 'text-emerald-500' : 'text-muted-foreground text-opacity-50'}`}
+                  className={`text-xs font-bold ${enabled ? 'text-emerald-500' : 'text-muted-foreground text-opacity-50'}`}
                 >
-                  {storage.enabled ? 'ACTIVE' : 'IDLE'}
+                  {enabled ? 'ACTIVE' : 'IDLE'}
                 </span>
               </div>
               <div className="h-8 w-px bg-border" />
               <Switch
-                checked={storage.enabled}
+                checked={enabled}
                 onCheckedChange={(checked) => setEnabled(checked)}
               />
             </Card>
@@ -153,7 +164,7 @@ function App() {
             </Button>
           </div>
 
-          {storage.rules.length === 0 ? (
+          {rules.length === 0 ? (
             <Card className="p-16 text-center bg-secondary/5 border-dashed border-2 border-border/50 rounded-3xl group transition-all hover:border-primary/30">
               <div className="w-24 h-24 mx-auto mb-8 rounded-[2.5rem] bg-primary/10 flex items-center justify-center text-4xl transform transition-transform duration-500 shadow-inner">
                 <Zap className="w-16 h-16 text-primary" />
