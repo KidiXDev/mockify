@@ -267,6 +267,8 @@ interface MockifyConfig {
         const originalOnReadyStateChange = xhr.onreadystatechange;
 
         xhr.onreadystatechange = function (event: Event) {
+          // Capture responses with any status code (including errors for testing purposes)
+          // This allows users to record and replay error responses as well
           if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 600) {
             const responseText = xhr.responseText || '';
             const contentType = xhr.getResponseHeader('content-type') || '';
@@ -402,7 +404,7 @@ interface MockifyConfig {
           xhr.dispatchEvent(loadEndEvent);
 
           if (typeof xhr.onreadystatechange === 'function') {
-            xhr.onreadystatechange(readyStateEvent as unknown as Event);
+            xhr.onreadystatechange(readyStateEvent as Event);
           }
           if (typeof xhr.onload === 'function') {
             xhr.onload(loadEvent);
@@ -505,7 +507,7 @@ interface MockifyConfig {
           xhr.dispatchEvent(loadEndEvent);
 
           if (typeof xhr.onreadystatechange === 'function') {
-            xhr.onreadystatechange(readyStateEvent as unknown as Event);
+            xhr.onreadystatechange(readyStateEvent as Event);
           }
           if (typeof xhr.onload === 'function') {
             xhr.onload(loadEvent);

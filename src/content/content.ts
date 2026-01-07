@@ -1,5 +1,7 @@
 import injectedRaw from '@/injected/injected.ts?script&module';
 
+const MAX_CAPTURED_RESPONSES = 10;
+
 interface CapturedResponse {
   url: string;
   timestamp: number;
@@ -315,9 +317,11 @@ async function init() {
           }
           // Add the captured response
           rule.capturedResponses.push(capturedResponse);
-          // Keep only the last 10 captured responses
-          if (rule.capturedResponses.length > 10) {
-            rule.capturedResponses = rule.capturedResponses.slice(-10);
+          // Keep only the last MAX_CAPTURED_RESPONSES
+          if (rule.capturedResponses.length > MAX_CAPTURED_RESPONSES) {
+            rule.capturedResponses = rule.capturedResponses.slice(
+              -MAX_CAPTURED_RESPONSES
+            );
           }
           // Update storage
           await chrome.storage.local.set({ profiles });
