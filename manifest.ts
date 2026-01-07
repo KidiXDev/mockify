@@ -30,7 +30,12 @@ const manifest: ManifestV3Export = {
     default_title: 'Mockify'
   },
 
-  options_page: 'options.html'
+  options_page: 'options.html',
+
+  icons: {
+    '128': 'logo.png',
+    '1024': 'logo.png'
+  }
 };
 
 export default manifest;

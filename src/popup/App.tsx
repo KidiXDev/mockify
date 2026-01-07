@@ -50,9 +50,7 @@ function App() {
     <div className="min-w-[280px] bg-background p-5 text-foreground border border-border shadow-xl">
       <div className="mb-5">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg shadow-lg shadow-primary/20">
-            M
-          </div>
+          <img src="/logo.png" alt="Mockify" className="w-8 h-8" />
           <h1 className="text-lg font-semibold text-foreground tracking-tight">
             Mockify
           </h1>

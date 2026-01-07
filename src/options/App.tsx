@@ -262,9 +262,7 @@ function App() {
       <aside className="w-72 border-r border-border/50 bg-[#060b1d] flex flex-col shrink-0">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary to-blue-600 flex items-center justify-center text-primary-foreground font-black text-xl shadow-lg shadow-primary/20">
-              M
-            </div>
+            <img src="/logo.png" alt="Mockify" className="w-8 h-8" />
             <div>
               <h1 className="text-xl font-bold tracking-tight text-foreground">
                 Mockify
