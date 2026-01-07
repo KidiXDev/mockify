@@ -8,7 +8,7 @@
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo/mockify.git
+   git clone https://github.com/kidixdev/mockify.git
    cd mockify
    ```
 
