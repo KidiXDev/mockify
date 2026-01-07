@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+const RESPONSE_PREVIEW_LENGTH = 100;
+
 interface RuleEditorProps {
   initialData?: MockRule | null;
   onSave: (data: Omit<MockRule, 'id'>) => void;
@@ -304,7 +306,7 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
                     </span>
                   </div>
                   <div className="text-[10px] text-muted-foreground/60 truncate mt-1">
-                    {resp.response.substring(0, 100)}...
+                    {resp.response.substring(0, RESPONSE_PREVIEW_LENGTH)}...
                   </div>
                 </div>
               ))}
