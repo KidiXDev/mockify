@@ -1,5 +1,14 @@
 import injectedRaw from '@/injected/injected.ts?script&module';
 
+interface CapturedResponse {
+  url: string;
+  timestamp: number;
+  statusCode: number;
+  responseType: 'json' | 'text';
+  response: string;
+  headers?: Record<string, string>;
+}
+
 interface MockRule {
   id: string;
   enabled: boolean;
@@ -9,6 +18,8 @@ interface MockRule {
   mockResponse: string;
   statusCode: number;
   delay: number;
+  mode?: 'mock' | 'record' | 'replay';
+  capturedResponses?: CapturedResponse[];
 }
 
 interface Profile {
@@ -272,6 +283,50 @@ async function init() {
 
     if (event.data && event.data.type === 'MOCKIFY_MOCK_APPLIED') {
       showNotification(event.data.url);
+    }
+
+    if (event.data && event.data.type === 'MOCKIFY_RESPONSE_CAPTURED') {
+      // Handle captured response
+      const { ruleId, capturedResponse } = event.data;
+      console.log(
+        '[Mockify Content] Received captured response for rule:',
+        ruleId
+      );
+
+      // Get current storage
+      const result = await chrome.storage.local.get([
+        'profiles',
+        'activeProfileId'
+      ]);
+      const profiles = (result.profiles as Profile[]) ?? [];
+      const activeProfileId =
+        (result.activeProfileId as string) || profiles[0]?.id;
+
+      // Find the profile and rule
+      const profileIndex = profiles.findIndex((p) => p.id === activeProfileId);
+      if (profileIndex !== -1) {
+        const ruleIndex = profiles[profileIndex].rules.findIndex(
+          (r) => r.id === ruleId
+        );
+        if (ruleIndex !== -1) {
+          const rule = profiles[profileIndex].rules[ruleIndex];
+          if (!rule.capturedResponses) {
+            rule.capturedResponses = [];
+          }
+          // Add the captured response
+          rule.capturedResponses.push(capturedResponse);
+          // Keep only the last 10 captured responses
+          if (rule.capturedResponses.length > 10) {
+            rule.capturedResponses = rule.capturedResponses.slice(-10);
+          }
+          // Update storage
+          await chrome.storage.local.set({ profiles });
+          console.log(
+            '[Mockify Content] Saved captured response for rule:',
+            ruleId
+          );
+        }
+      }
     }
   });
 

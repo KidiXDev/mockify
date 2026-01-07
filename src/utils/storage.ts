@@ -15,7 +15,9 @@ export async function getStorage(): Promise<MockifyStorage> {
       ...rule,
       isRegex: rule.isRegex ?? false,
       statusCode: rule.statusCode ?? 200,
-      delay: rule.delay ?? 0
+      delay: rule.delay ?? 0,
+      mode: rule.mode ?? 'mock',
+      capturedResponses: rule.capturedResponses ?? []
     }));
 
     const defaultProfile: Profile = {
@@ -35,9 +37,20 @@ export async function getStorage(): Promise<MockifyStorage> {
     return newStorage;
   }
 
+  // Ensure existing rules have the new fields
+  const profiles = (result.profiles as Profile[]) ?? DEFAULT_STORAGE.profiles;
+  const migratedProfiles = profiles.map((profile) => ({
+    ...profile,
+    rules: profile.rules.map((rule) => ({
+      ...rule,
+      mode: rule.mode ?? 'mock',
+      capturedResponses: rule.capturedResponses ?? []
+    }))
+  }));
+
   return {
     enabled: (result.enabled as boolean) ?? DEFAULT_STORAGE.enabled,
-    profiles: (result.profiles as Profile[]) ?? DEFAULT_STORAGE.profiles,
+    profiles: migratedProfiles,
     activeProfileId:
       (result.activeProfileId as string) ?? DEFAULT_STORAGE.activeProfileId
   };

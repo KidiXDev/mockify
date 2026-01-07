@@ -1,3 +1,12 @@
+export interface CapturedResponse {
+  url: string;
+  timestamp: number;
+  statusCode: number;
+  responseType: 'json' | 'text';
+  response: string;
+  headers?: Record<string, string>;
+}
+
 export interface MockRule {
   id: string;
   name?: string;
@@ -9,6 +18,8 @@ export interface MockRule {
   mockResponse: string;
   statusCode: number;
   delay: number; // in milliseconds
+  mode?: 'mock' | 'record' | 'replay'; // replay mode
+  capturedResponses?: CapturedResponse[]; // captured responses for replay
 }
 
 export interface Profile {

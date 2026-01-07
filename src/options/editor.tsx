@@ -39,7 +39,9 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
     mockResponse: initialData?.mockResponse ?? '',
     statusCode: initialData?.statusCode ?? 200,
     delay: initialData?.delay ?? 0,
-    enabled: initialData?.enabled ?? true
+    enabled: initialData?.enabled ?? true,
+    mode: initialData?.mode ?? ('mock' as 'mock' | 'record' | 'replay'),
+    capturedResponses: initialData?.capturedResponses ?? []
   });
 
   const handleBeautify = () => {
@@ -235,6 +237,101 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
             />
           </div>
         </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-primary" />
+            Mode
+          </label>
+          <Tabs
+            value={formData.mode}
+            onValueChange={(val) =>
+              setFormData({
+                ...formData,
+                mode: val as 'mock' | 'record' | 'replay'
+              })
+            }
+          >
+            <TabsList className="w-full bg-background/50 border border-border/50 p-1 h-11">
+              <TabsTrigger
+                value="mock"
+                className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                Mock
+              </TabsTrigger>
+              <TabsTrigger
+                value="record"
+                className="flex-1 data-[state=active]:bg-amber-500 data-[state=active]:text-white"
+              >
+                Record
+              </TabsTrigger>
+              <TabsTrigger
+                value="replay"
+                className="flex-1 data-[state=active]:bg-purple-500 data-[state=active]:text-white"
+              >
+                Replay
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <p className="text-[11px] text-muted-foreground">
+            {formData.mode === 'mock' &&
+              'Use the mock response defined below to intercept requests.'}
+            {formData.mode === 'record' &&
+              'Capture real network responses for this URL pattern. Requests will go through normally.'}
+            {formData.mode === 'replay' &&
+              'Replay captured responses. You can modify captured responses before replaying.'}
+          </p>
+        </div>
+
+        {formData.mode === 'replay' && formData.capturedResponses.length > 0 && (
+          <div className="space-y-2 p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+            <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-purple-500" />
+              Captured Responses ({formData.capturedResponses.length})
+            </label>
+            <div className="text-xs text-muted-foreground space-y-1">
+              {formData.capturedResponses.slice(-3).map((resp, idx) => (
+                <div
+                  key={idx}
+                  className="bg-background/50 p-2 rounded border border-border/30"
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="font-mono text-[10px]">
+                      Status: {resp.statusCode}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/60">
+                      {new Date(resp.timestamp).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground/60 truncate mt-1">
+                    {resp.response.substring(0, 100)}...
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                const latestResponse =
+                  formData.capturedResponses[
+                    formData.capturedResponses.length - 1
+                  ];
+                if (latestResponse) {
+                  setFormData({
+                    ...formData,
+                    mockResponse: latestResponse.response,
+                    statusCode: latestResponse.statusCode,
+                    responseType: latestResponse.responseType
+                  });
+                }
+              }}
+            >
+              Use Latest Captured Response
+            </Button>
+          </div>
+        )}
 
         <div className="space-y-2">
           <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
