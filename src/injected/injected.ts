@@ -14,15 +14,24 @@ interface MockRule {
   queryParams?: string;
 }
 
+interface RecordingRule {
+  id: string;
+  enabled: boolean;
+  urlMatch: string;
+  isRegex: boolean;
+}
+
 interface MockifyConfig {
   enabled: boolean;
   rules: MockRule[];
+  recordingRules: RecordingRule[];
 }
 
 (function () {
   let config: MockifyConfig = {
     enabled: false,
-    rules: []
+    rules: [],
+    recordingRules: []
   };
 
   let configReceived = false;
@@ -48,6 +57,26 @@ interface MockifyConfig {
           return regex.test(url);
         } catch (e) {
           console.error(`[Mockify] Invalid regex: ${rule.urlMatch}`, e);
+          return false;
+        }
+      }
+      return url.includes(rule.urlMatch);
+    });
+  }
+
+  function findMatchingRecordingRule(url: string): RecordingRule | undefined {
+    if (!config.enabled || !configReceived) return undefined;
+    return config.recordingRules.find((rule) => {
+      if (!rule.enabled) return false;
+      if (rule.isRegex) {
+        try {
+          const regex = new RegExp(rule.urlMatch);
+          return regex.test(url);
+        } catch (e) {
+          console.error(
+            `[Mockify] Invalid recording regex: ${rule.urlMatch}`,
+            e
+          );
           return false;
         }
       }
@@ -101,11 +130,11 @@ interface MockifyConfig {
     try {
       const urlObj = new URL(url, window.location.origin);
       const params = new URLSearchParams(queryParams);
-      
+
       params.forEach((value, key) => {
         urlObj.searchParams.set(key, value);
       });
-      
+
       return urlObj.toString();
     } catch (e) {
       console.error('[Mockify] Error applying query params:', e);
@@ -113,9 +142,12 @@ interface MockifyConfig {
     }
   }
 
-  function prepareRequestBody(rule: MockRule, originalBody?: BodyInit | null | undefined): BodyInit | null | undefined {
+  function prepareRequestBody(
+    rule: MockRule,
+    originalBody?: BodyInit | null | undefined
+  ): BodyInit | null | undefined {
     if (!rule.modifyRequest || !rule.requestBody) return originalBody;
-    
+
     // Return the pre-validated request body string
     // Note: Validation should be done when rule is saved, not on every request
     return rule.requestBody;
@@ -136,6 +168,54 @@ interface MockifyConfig {
           : input.url;
 
     const matchingRule = findMatchingRule(url);
+    const matchingRecordingRule = findMatchingRecordingRule(url);
+
+    if (matchingRecordingRule) {
+      // Create a copy of the request to capture it without consuming the original
+      const record = async (resp: Response) => {
+        try {
+          const clonedResp = resp.clone();
+          const responseBody = await clonedResp.text();
+          const requestHeaders: Record<string, string> = {};
+          if (init?.headers) {
+            new Headers(init.headers).forEach(
+              (v, k) => (requestHeaders[k] = v)
+            );
+          }
+          const responseHeaders: Record<string, string> = {};
+          resp.headers.forEach((v, k) => (responseHeaders[k] = v));
+
+          window.postMessage(
+            {
+              type: 'MOCKIFY_RECORD_REQUEST',
+              recording: {
+                id: Math.random().toString(36).substring(2),
+                url,
+                method: init?.method || 'GET',
+                requestHeaders,
+                requestBody: init?.body ? String(init.body) : null,
+                responseHeaders,
+                responseBody,
+                statusCode: resp.status,
+                timestamp: Date.now()
+              }
+            },
+            '*'
+          );
+        } catch (e) {
+          console.error('[Mockify] Error recording fetch:', e);
+        }
+      };
+
+      if (matchingRule) {
+        // ... handled below
+      } else {
+        return originalFetch.apply(window, [input, init]).then((resp) => {
+          record(resp);
+          return resp;
+        });
+      }
+    }
 
     if (matchingRule) {
       // If rule is set to modify request instead of mocking response
@@ -149,26 +229,38 @@ interface MockifyConfig {
         let modifiedUrl = url;
         if (matchingRule.queryParams) {
           modifiedUrl = applyQueryParams(url, matchingRule.queryParams);
-          console.log(`%c[Mockify] Modified URL: ${modifiedUrl}`, 'color: #f59e0b;');
+          console.log(
+            `%c[Mockify] Modified URL: ${modifiedUrl}`,
+            'color: #f59e0b;'
+          );
         }
 
         // Prepare modified request init
         const modifiedInit: RequestInit = { ...init };
-        
+
         // Modify HTTP method
         if (matchingRule.requestMethod) {
           modifiedInit.method = matchingRule.requestMethod;
-          console.log(`%c[Mockify] Modified method: ${matchingRule.requestMethod}`, 'color: #f59e0b;');
+          console.log(
+            `%c[Mockify] Modified method: ${matchingRule.requestMethod}`,
+            'color: #f59e0b;'
+          );
         }
 
         // Modify request body
         if (matchingRule.requestBody) {
           modifiedInit.body = prepareRequestBody(matchingRule, init?.body);
-          console.log(`%c[Mockify] Modified body: ${modifiedInit.body}`, 'color: #f59e0b;');
+          console.log(
+            `%c[Mockify] Modified body: ${modifiedInit.body}`,
+            'color: #f59e0b;'
+          );
         }
 
-        window.postMessage({ type: 'MOCKIFY_REQUEST_MODIFIED', url: modifiedUrl }, '*');
-        
+        window.postMessage(
+          { type: 'MOCKIFY_REQUEST_MODIFIED', url: modifiedUrl },
+          '*'
+        );
+
         // Send the modified request
         return originalFetch.apply(window, [modifiedUrl, modifiedInit]);
       }
@@ -199,7 +291,7 @@ interface MockifyConfig {
   ): void {
     const urlString = typeof url === 'string' ? url : url.href;
     const matchingRule = findMatchingRule(urlString);
-    
+
     let modifiedUrl = urlString;
     let modifiedMethod = method;
 
@@ -208,13 +300,19 @@ interface MockifyConfig {
       // Modify URL with query parameters
       if (matchingRule.queryParams) {
         modifiedUrl = applyQueryParams(urlString, matchingRule.queryParams);
-        console.log(`%c[Mockify] XHR Modified URL: ${modifiedUrl}`, 'color: #f59e0b;');
+        console.log(
+          `%c[Mockify] XHR Modified URL: ${modifiedUrl}`,
+          'color: #f59e0b;'
+        );
       }
 
       // Modify HTTP method
       if (matchingRule.requestMethod) {
         modifiedMethod = matchingRule.requestMethod;
-        console.log(`%c[Mockify] XHR Modified method: ${modifiedMethod}`, 'color: #f59e0b;');
+        console.log(
+          `%c[Mockify] XHR Modified method: ${modifiedMethod}`,
+          'color: #f59e0b;'
+        );
       }
     }
 
@@ -238,6 +336,43 @@ interface MockifyConfig {
     const xhr = this as MockifyXHR;
     const url = xhr._mockifyOriginalUrl || xhr._mockifyUrl;
 
+    const matchingRecordingRule = findMatchingRecordingRule(url);
+
+    if (matchingRecordingRule) {
+      const recordXHR = () => {
+        try {
+          const responseHeaders: Record<string, string> = {};
+          const headerLines = xhr.getAllResponseHeaders().split(/[\r\n]+/);
+          headerLines.forEach((line) => {
+            const parts = line.split(': ');
+            if (parts.length === 2) responseHeaders[parts[0]] = parts[1];
+          });
+
+          window.postMessage(
+            {
+              type: 'MOCKIFY_RECORD_REQUEST',
+              recording: {
+                id: Math.random().toString(36).substring(2),
+                url,
+                method: xhr._mockifyMethod || 'GET',
+                requestHeaders: {}, // XHR doesn't easily expose set request headers
+                requestBody: body ? String(body) : null,
+                responseHeaders,
+                responseBody: xhr.responseText,
+                statusCode: xhr.status,
+                timestamp: Date.now()
+              }
+            },
+            '*'
+          );
+        } catch (e) {
+          console.error('[Mockify] Error recording XHR:', e);
+        }
+      };
+
+      this.addEventListener('load', recordXHR);
+    }
+
     const matchingRule = findMatchingRule(url);
 
     if (matchingRule) {
@@ -249,15 +384,29 @@ interface MockifyConfig {
         );
 
         // Modify request body
-        let modifiedBody: Document | XMLHttpRequestBodyInit | null | undefined = body;
+        let modifiedBody: Document | XMLHttpRequestBodyInit | null | undefined =
+          body;
         if (matchingRule.requestBody) {
-          const bodyStr = prepareRequestBody(matchingRule, body as BodyInit | null | undefined);
-          modifiedBody = bodyStr as Document | XMLHttpRequestBodyInit | null | undefined;
-          console.log(`%c[Mockify] XHR Modified body: ${modifiedBody}`, 'color: #f59e0b;');
+          const bodyStr = prepareRequestBody(
+            matchingRule,
+            body as BodyInit | null | undefined
+          );
+          modifiedBody = bodyStr as
+            | Document
+            | XMLHttpRequestBodyInit
+            | null
+            | undefined;
+          console.log(
+            `%c[Mockify] XHR Modified body: ${modifiedBody}`,
+            'color: #f59e0b;'
+          );
         }
 
-        window.postMessage({ type: 'MOCKIFY_REQUEST_MODIFIED', url: xhr._mockifyUrl }, '*');
-        
+        window.postMessage(
+          { type: 'MOCKIFY_REQUEST_MODIFIED', url: xhr._mockifyUrl },
+          '*'
+        );
+
         // Send the modified request
         return originalXHRSend.apply(this, [modifiedBody]);
       }

@@ -1,4 +1,10 @@
-import type { MockifyStorage, MockRule, Profile } from '@/types/rule';
+import type {
+  MockifyStorage,
+  MockRule,
+  Profile,
+  RecordedRequest,
+  RecordingRule
+} from '@/types/rule';
 import { DEFAULT_STORAGE } from '@/types/rule';
 
 export async function getStorage(): Promise<MockifyStorage> {
@@ -6,7 +12,9 @@ export async function getStorage(): Promise<MockifyStorage> {
     'enabled',
     'profiles',
     'activeProfileId',
-    'rules'
+    'rules',
+    'recordingRules',
+    'recordings'
   ]);
 
   // Migration logic
@@ -27,7 +35,9 @@ export async function getStorage(): Promise<MockifyStorage> {
     const newStorage: MockifyStorage = {
       enabled: (result.enabled as boolean) ?? DEFAULT_STORAGE.enabled,
       profiles: [defaultProfile],
-      activeProfileId: 'default'
+      activeProfileId: 'default',
+      recordingRules: [],
+      recordings: []
     };
 
     await chrome.storage.local.set(newStorage);
@@ -39,8 +49,74 @@ export async function getStorage(): Promise<MockifyStorage> {
     enabled: (result.enabled as boolean) ?? DEFAULT_STORAGE.enabled,
     profiles: (result.profiles as Profile[]) ?? DEFAULT_STORAGE.profiles,
     activeProfileId:
-      (result.activeProfileId as string) ?? DEFAULT_STORAGE.activeProfileId
+      (result.activeProfileId as string) ?? DEFAULT_STORAGE.activeProfileId,
+    recordingRules:
+      (result.recordingRules as RecordingRule[]) ??
+      DEFAULT_STORAGE.recordingRules,
+    recordings:
+      (result.recordings as RecordedRequest[]) ?? DEFAULT_STORAGE.recordings
   };
+}
+
+export async function getRecordingRules(): Promise<RecordingRule[]> {
+  const storage = await getStorage();
+  return storage.recordingRules;
+}
+
+export async function setRecordingRules(rules: RecordingRule[]): Promise<void> {
+  await chrome.storage.local.set({ recordingRules: rules });
+}
+
+export async function addRecordingRule(rule: RecordingRule): Promise<void> {
+  const rules = await getRecordingRules();
+  rules.push(rule);
+  await setRecordingRules(rules);
+}
+
+export async function updateRecordingRule(
+  updatedRule: RecordingRule
+): Promise<void> {
+  const rules = await getRecordingRules();
+  const index = rules.findIndex((r) => r.id === updatedRule.id);
+  if (index !== -1) {
+    rules[index] = updatedRule;
+    await setRecordingRules(rules);
+  }
+}
+
+export async function deleteRecordingRule(id: string): Promise<void> {
+  const rules = await getRecordingRules();
+  const filtered = rules.filter((r) => r.id !== id);
+  await setRecordingRules(filtered);
+}
+
+export async function toggleRecordingRule(id: string): Promise<void> {
+  const rules = await getRecordingRules();
+  const index = rules.findIndex((r) => r.id === id);
+  if (index !== -1) {
+    rules[index].enabled = !rules[index].enabled;
+    await setRecordingRules(rules);
+  }
+}
+
+export async function getRecordings(): Promise<RecordedRequest[]> {
+  const storage = await getStorage();
+  return storage.recordings;
+}
+
+const MAX_RECORDINGS = 100;
+
+export async function addRecording(recording: RecordedRequest): Promise<void> {
+  const recordings = await getRecordings();
+  recordings.unshift(recording);
+  if (recordings.length > MAX_RECORDINGS) {
+    recordings.pop();
+  }
+  await chrome.storage.local.set({ recordings });
+}
+
+export async function clearRecordings(): Promise<void> {
+  await chrome.storage.local.set({ recordings: [] });
 }
 
 export async function setEnabled(enabled: boolean): Promise<void> {

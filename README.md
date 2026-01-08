@@ -60,4 +60,5 @@
 - [x] **Profile Switching**: Switch between different sets of rules (e.g., "Development", "Staging", "Edge Cases").
 - [ ] **GraphQL Support**: Match requests based on GraphQL `OperationName` or body content.
 - [ ] **Rule Priorities**: Drag-and-drop to reorder rules and define execution priority.
+- [x] **Replay**: Replay mocked responses for debugging and testing.
 

@@ -9,13 +9,15 @@ import { Switch } from '@/components/ui/switch';
 import { useRuleStore } from '@/store/useRuleStore';
 import type { MockRule } from '@/types/rule';
 import {
-  Activity,
+  Clock,
+  Code2,
   Copy,
   Download,
+  Edit3,
   Github,
   Layers,
-  Pause,
   Plus,
+  Radio,
   Search,
   Send,
   Settings2,
@@ -25,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { RuleEditor } from './editor';
+import { Replay } from './Replay';
 
 function App() {
   const { confirm } = useAlert();
@@ -59,6 +62,9 @@ function App() {
     'response'
   );
   const [isNewRulePopoverOpen, setIsNewRulePopoverOpen] = useState(false);
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'rules' | 'replay'>(
+    'rules'
+  );
 
   useEffect(() => {
     const cleanup = initialize();
@@ -97,7 +103,7 @@ function App() {
   };
 
   const handleSave = async (data: Omit<MockRule, 'id'>) => {
-    if (editingRule) {
+    if (editingRule && editingRule.id) {
       await updateRule({
         ...editingRule,
         ...data
@@ -268,7 +274,7 @@ function App() {
     <div className="flex h-screen bg-background text-foreground selection:bg-primary/30 overflow-hidden">
       {/* Sidebar */}
       <aside className="w-72 border-r border-border/50 bg-[#060b1d] flex flex-col shrink-0">
-        <div className="p-6">
+        <div className="p-6 pb-0">
           <div className="flex items-center gap-3 mb-8">
             <img src="/logo.png" alt="Mockify" className="w-8 h-8" />
             <div>
@@ -277,87 +283,133 @@ function App() {
               </h1>
             </div>
           </div>
+        </div>
 
-          <div className="space-y-1">
-            <div className="flex items-center justify-between px-2 mb-2">
-              <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-                Profiles
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setIsProfileDialogOpen(true)}
-                  className="p-1 hover:bg-primary/10 hover:text-primary rounded-md transition-colors"
-                  title="Add Profile"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={handleImportProfile}
-                  className="p-1 hover:bg-primary/10 hover:text-primary rounded-md transition-colors"
-                  title="Import Profile"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                </button>
+        <div className="flex bg-background/50 p-1 rounded-xl mb-6">
+          <button
+            onClick={() => setActiveSidebarTab('rules')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeSidebarTab === 'rules'
+                ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            Rules
+          </button>
+          <button
+            onClick={() => setActiveSidebarTab('replay')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeSidebarTab === 'replay'
+                ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Radio
+              className={`w-3.5 h-3.5 ${activeSidebarTab === 'replay' ? 'animate-pulse' : ''}`}
+            />
+            Replay
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {activeSidebarTab === 'rules' ? (
+            <div className="px-6 space-y-1 flex flex-col h-full min-h-0">
+              <div className="flex items-center justify-between px-2 mb-2">
+                <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                  Profiles
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setIsProfileDialogOpen(true)}
+                    className="p-1 hover:bg-primary/10 hover:text-primary rounded-md transition-colors"
+                    title="Add Profile"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={handleImportProfile}
+                    className="p-1 hover:bg-primary/10 hover:text-primary rounded-md transition-colors"
+                    title="Import Profile"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 space-y-1 overflow-y-auto custom-scrollbar pr-2 -mr-2 mb-6">
+                {profiles.map((profile) => (
+                  <div
+                    key={profile.id}
+                    onClick={() => setViewingProfile(profile.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left relative overflow-hidden cursor-pointer group ${
+                      viewingProfileId === profile.id
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground'
+                    }`}
+                  >
+                    {viewingProfileId === profile.id && (
+                      <div className="absolute left-0 top-2 bottom-2 w-1 bg-primary rounded-full" />
+                    )}
+                    {activeProfileId === profile.id && (
+                      <div
+                        className="absolute right-0 top-0 bottom-0 w-1 bg-emerald-500/50"
+                        title="Globally Active"
+                      />
+                    )}
+                    <Layers
+                      className={`w-4 h-4 ${viewingProfileId === profile.id ? 'text-primary' : 'text-muted-foreground/50'}`}
+                    />
+                    <div className="flex-1 flex flex-col min-w-0">
+                      <span className="text-sm font-semibold truncate">
+                        {profile.name}
+                      </span>
+                      {activeProfileId === profile.id && (
+                        <span className="text-[8px] font-black text-emerald-500 uppercase tracking-tighter -mt-0.5">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold bg-background/40 px-1.5 py-0.5 rounded-md border border-border/20 group-hover:border-border/40 transition-colors">
+                      {profile.rules.length}
+                    </span>
+
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                      <button
+                        onClick={(e) => handleExportProfile(profile.id, e)}
+                        className="p-1 hover:bg-primary hover:text-primary-foreground rounded-lg transition-all"
+                      >
+                        <Download className="w-3 h-3" />
+                      </button>
+                      {profiles.length > 1 && (
+                        <button
+                          onClick={(e) => handleDeleteProfile(profile.id, e)}
+                          className="p-1 hover:bg-destructive hover:text-destructive-foreground rounded-lg transition-all"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-
-            <div className="space-y-1 max-h-[calc(100vh-320px)] overflow-y-auto custom-scrollbar pr-2 -mr-2">
-              {profiles.map((profile) => (
-                <div
-                  key={profile.id}
-                  onClick={() => setViewingProfile(profile.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-left relative overflow-hidden cursor-pointer group ${
-                    viewingProfileId === profile.id
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground'
-                  }`}
-                >
-                  {viewingProfileId === profile.id && (
-                    <div className="absolute left-0 top-2 bottom-2 w-1 bg-primary rounded-full" />
-                  )}
-                  {activeProfileId === profile.id && (
-                    <div
-                      className="absolute right-0 top-0 bottom-0 w-1 bg-emerald-500/50"
-                      title="Globally Active"
-                    />
-                  )}
-                  <Layers
-                    className={`w-4 h-4 ${viewingProfileId === profile.id ? 'text-primary' : 'text-muted-foreground/50'}`}
-                  />
-                  <div className="flex-1 flex flex-col min-w-0">
-                    <span className="text-sm font-semibold truncate">
-                      {profile.name}
-                    </span>
-                    {activeProfileId === profile.id && (
-                      <span className="text-[8px] font-black text-emerald-500 uppercase tracking-tighter -mt-0.5">
-                        Active
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[10px] font-bold bg-background/40 px-1.5 py-0.5 rounded-md border border-border/20 group-hover:border-border/40 transition-colors">
-                    {profile.rules.length}
-                  </span>
-
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
-                    <button
-                      onClick={(e) => handleExportProfile(profile.id, e)}
-                      className="p-1 hover:bg-primary hover:text-primary-foreground rounded-lg transition-all"
-                    >
-                      <Download className="w-3 h-3" />
-                    </button>
-                    {profiles.length > 1 && (
-                      <button
-                        onClick={(e) => handleDeleteProfile(profile.id, e)}
-                        className="p-1 hover:bg-destructive hover:text-destructive-foreground rounded-lg transition-all"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
+          ) : (
+            <div className="px-6 space-y-4">
+              <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  <p className="text-[10px] text-primary font-black uppercase tracking-wider">
+                    Replay Mode
+                  </p>
                 </div>
-              ))}
+                <p className="text-xs text-muted-foreground leading-relaxed font-medium">
+                  Record real traffic and convert it into mocking rules
+                  instantly.
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="mt-auto p-6 space-y-4">
@@ -391,12 +443,14 @@ function App() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground/40 hover:text-primary transition-colors"
+                title="GitHub"
               >
                 <Github className="w-4 h-4" />
               </a>
               <a
                 href="#"
                 className="text-muted-foreground/40 hover:text-primary transition-colors"
+                title="Settings"
               >
                 <Settings2 className="w-4 h-4" />
               </a>
@@ -523,174 +577,147 @@ function App() {
         </header>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
-          <div className="max-w-5xl mx-auto space-y-4">
-            {rules.length === 0 ? (
-              <Card className="p-16 text-center bg-secondary/5 border-dashed border-2 border-border/30 rounded-[2.5rem] group transition-all hover:border-primary/20">
-                <div className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-primary/5 flex items-center justify-center transform transition-transform duration-500">
-                  <Zap className="w-10 h-10 text-primary/50" />
-                </div>
-                <h3 className="text-xl font-bold text-foreground mb-2">
-                  No Interception Rules
-                </h3>
-                <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-8 font-medium">
-                  This profile is currently empty. Add your first rule to start
-                  intercepting and mocking requests.
-                </p>
-                <Button
-                  onClick={() => setIsNewRulePopoverOpen(true)}
-                  variant="secondary"
-                  className="px-8 h-12 rounded-xl font-bold bg-secondary/80 hover:bg-secondary transition-all"
-                >
-                  Create Your First Rule
-                </Button>
-              </Card>
-            ) : (
-              <div className="grid gap-3">
-                {filteredRules.length === 0 && (
-                  <div className="p-12 text-center text-muted-foreground font-semibold italic opacity-50">
-                    No matching rules in this profile...
+          <div className="max-w-5xl mx-auto h-full">
+            {activeSidebarTab === 'rules' ? (
+              <div className="space-y-4">
+                {rules.length === 0 ? (
+                  <Card className="p-16 text-center bg-secondary/5 border-dashed border-2 border-border/30 rounded-[2.5rem] group transition-all hover:border-primary/20">
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-3xl bg-primary/5 flex items-center justify-center transform transition-transform duration-500">
+                      <Zap className="w-10 h-10 text-primary/50" />
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">
+                      No Interception Rules
+                    </h3>
+                    <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-8 font-medium">
+                      This profile is currently empty. Add your first rule to
+                      start intercepting and mocking requests.
+                    </p>
+                    <Button
+                      onClick={() => setIsNewRulePopoverOpen(true)}
+                      variant="secondary"
+                      className="px-8 h-12 rounded-xl font-bold bg-secondary/80 hover:bg-secondary transition-all"
+                    >
+                      Create Your First Rule
+                    </Button>
+                  </Card>
+                ) : (
+                  <div className="grid gap-3">
+                    {filteredRules.length === 0 && (
+                      <div className="p-12 text-center text-muted-foreground font-semibold italic opacity-50">
+                        No matching rules in this profile...
+                      </div>
+                    )}
+                    {filteredRules.map((rule) => (
+                      <Card
+                        key={rule.id}
+                        className={`group relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-primary/5 border-border/30 hover:border-primary/20 bg-secondary/10 backdrop-blur-sm rounded-2xl ${
+                          !rule.enabled ? 'opacity-60' : ''
+                        }`}
+                      >
+                        <div className="p-5">
+                          <div className="flex items-start justify-between gap-4 mb-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <Badge
+                                  variant={
+                                    rule.modifyRequest ? 'blue' : 'amber'
+                                  }
+                                  className="text-[9px] font-black uppercase tracking-tighter px-1.5 py-0"
+                                >
+                                  {rule.modifyRequest ? 'Request' : 'Response'}
+                                </Badge>
+                                {rule.isRegex && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] font-black uppercase tracking-tighter px-1.5 py-0 border-primary/20 text-primary/70"
+                                  >
+                                    Regex
+                                  </Badge>
+                                )}
+                                <span className="text-[10px] text-muted-foreground/40 font-mono">
+                                  {rule.id}
+                                </span>
+                              </div>
+                              <h3 className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                                {rule.name || rule.urlMatch}
+                              </h3>
+                              {rule.name && (
+                                <p className="text-[10px] text-muted-foreground font-mono truncate mt-0.5 opacity-50">
+                                  {rule.urlMatch}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Switch
+                                checked={rule.enabled}
+                                onCheckedChange={() => toggleRule(rule.id)}
+                                className="scale-75 origin-right"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground/60">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
+                              {rule.modifyRequest ? (
+                                <span>{rule.requestMethod || 'ALL'}</span>
+                              ) : (
+                                <span>{rule.statusCode || 200} OK</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground/60">
+                              <Clock className="w-3 h-3" />
+                              {rule.delay || 0}ms
+                            </div>
+                            {rule.responseType && (
+                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground/60 uppercase">
+                                <Code2 className="w-3 h-3" />
+                                {rule.responseType}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action Bar */}
+                        <div className="flex items-center justify-end px-3 py-2 bg-secondary/20 border-t border-border/10 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => handleDuplicate(rule.id, e)}
+                              className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-lg transition-all"
+                              title="Duplicate"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => handleExportRule(rule, e)}
+                              className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-lg transition-all"
+                              title="Export"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleEdit(rule)}
+                              className="p-1.5 hover:bg-primary/10 hover:text-primary rounded-lg transition-all"
+                              title="Edit"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => handleDelete(rule.id, e)}
+                              className="p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-lg transition-all"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
                   </div>
                 )}
-                {filteredRules.map((rule) => (
-                  <Card
-                    key={rule.id}
-                    onClick={() => handleEdit(rule)}
-                    className={`group relative overflow-hidden transition-all duration-300 border-border/30 hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 cursor-pointer rounded-2xl ${
-                      !rule.enabled
-                        ? 'bg-secondary/5 opacity-60'
-                        : 'bg-card/40 hover:bg-card/60'
-                    }`}
-                  >
-                    <div className="p-4 flex items-center gap-6">
-                      <div className="flex items-center gap-4 shrink-0">
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleRule(rule.id);
-                          }}
-                          className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
-                            rule.enabled
-                              ? 'bg-primary/10 text-primary'
-                              : 'bg-muted/10 text-muted-foreground'
-                          } hover:scale-105 active:scale-95`}
-                        >
-                          {rule.enabled ? (
-                            <Activity className="w-6 h-6" />
-                          ) : (
-                            <Pause className="w-6 h-6" />
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="text-sm font-bold text-foreground truncate tracking-tight">
-                            {rule.name || rule.urlMatch}
-                          </h4>
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          {rule.name && (
-                            <p className="text-[11px] text-muted-foreground/80 truncate font-mono max-w-md">
-                              {rule.urlMatch}
-                            </p>
-                          )}
-                          {rule.description ? (
-                            <p className="text-[11px] text-muted-foreground/60 truncate max-w-md">
-                              {rule.description}
-                            </p>
-                          ) : (
-                            !rule.name && (
-                              <p className="text-[11px] text-muted-foreground/60 truncate font-mono max-w-md">
-                                ↳ {rule.mockResponse || '(Empty response)'}
-                              </p>
-                            )
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 shrink-0">
-                        <div className="hidden lg:flex items-center gap-1.5 mr-4 border-r border-border/50 pr-4">
-                          {rule.modifyRequest ? (
-                            <>
-                              <Badge
-                                variant="default"
-                                className="px-1.5 py-0 text-[9px] font-black uppercase tracking-tighter bg-amber-500/20 text-amber-500 border-amber-500/30"
-                              >
-                                Modify
-                              </Badge>
-                              {rule.requestMethod && (
-                                <Badge
-                                  variant="secondary"
-                                  className="px-1.5 py-0 text-[9px] font-black bg-background/50 border-border/30"
-                                >
-                                  {rule.requestMethod}
-                                </Badge>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              <Badge
-                                variant={
-                                  rule.responseType === 'json'
-                                    ? 'amber'
-                                    : 'blue'
-                                }
-                                className="px-1.5 py-0 text-[9px] font-black uppercase tracking-tighter"
-                              >
-                                {rule.responseType}
-                              </Badge>
-                              <Badge
-                                variant="secondary"
-                                className="px-1.5 py-0 text-[9px] font-black bg-background/50 border-border/30"
-                              >
-                                {rule.statusCode || 200}
-                              </Badge>
-                            </>
-                          )}
-                          {rule.delay > 0 && (
-                            <Badge
-                              variant="secondary"
-                              className="px-1.5 py-0 text-[9px] font-black bg-background/50 border-border/30"
-                            >
-                              {rule.delay}ms
-                            </Badge>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => handleDuplicate(rule.id, e)}
-                            className="h-8 w-8 rounded-lg hover:bg-emerald-500/10 hover:text-emerald-500 transition-colors"
-                            title="Duplicate"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => handleExportRule(rule, e)}
-                            className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"
-                            title="Export"
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => handleDelete(rule.id, e)}
-                            className="h-8 w-8 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
               </div>
+            ) : (
+              <Replay />
             )}
           </div>
         </div>

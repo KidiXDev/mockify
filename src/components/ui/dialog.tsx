@@ -39,55 +39,52 @@ export function Dialog({
   description,
   className
 }: DialogProps) {
-  const [isVisible, setIsVisible] = React.useState(false);
-  const [isAnimating, setIsAnimating] = React.useState(true);
+  const [shouldRender, setShouldRender] = React.useState(isOpen);
+  const [isAnimateIn, setIsAnimateIn] = React.useState(false);
 
   React.useEffect(() => {
     if (isOpen) {
-      setIsVisible(true);
-      setIsAnimating(true);
-      document.body.style.overflow = 'hidden';
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setIsAnimating(false);
-        });
-      });
-    } else if (isVisible) {
-      setIsAnimating(true);
+      setShouldRender(true);
+      // Small delay to ensure the browser has time to register the element at its initial state
       const timer = setTimeout(() => {
-        setIsVisible(false);
-        setIsAnimating(true);
+        setIsAnimateIn(true);
+      }, 10);
+      return () => clearTimeout(timer);
+    } else {
+      setIsAnimateIn(false);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   React.useEffect(() => {
-    if (!isVisible) {
+    if (shouldRender) {
+      document.body.style.overflow = 'hidden';
+    } else {
       document.body.style.overflow = 'unset';
     }
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isVisible]);
+  }, [shouldRender]);
 
-  if (!isVisible) return null;
-
-  const shouldAnimate = isAnimating || !isOpen;
+  if (!shouldRender) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       <div
         className={cn(
           'fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity duration-150',
-          shouldAnimate ? 'opacity-0' : 'opacity-100'
+          !isAnimateIn ? 'opacity-0' : 'opacity-100'
         )}
         onClick={onClose}
       />
       <div
         className={cn(
           'relative w-full max-w-2xl bg-card border border-border rounded-xl shadow-2xl transition-all duration-150 flex flex-col max-h-[90vh] overflow-hidden',
-          shouldAnimate ? 'opacity-0 scale-95' : 'opacity-100 scale-100',
+          !isAnimateIn ? 'opacity-0 scale-95' : 'opacity-100 scale-100',
           className
         )}
       >

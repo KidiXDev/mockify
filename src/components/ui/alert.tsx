@@ -29,37 +29,35 @@ export function Alert({
   showCancel = true,
   className
 }: AlertProps) {
-  const [isVisible, setIsVisible] = React.useState(false);
-  const [isAnimating, setIsAnimating] = React.useState(true);
+  const [shouldRender, setShouldRender] = React.useState(isOpen);
+  const [isAnimateIn, setIsAnimateIn] = React.useState(false);
 
   React.useEffect(() => {
     if (isOpen) {
-      setIsVisible(true);
-      setIsAnimating(true);
-      document.body.style.overflow = 'hidden';
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setIsAnimating(false);
-        });
-      });
-    } else if (isVisible) {
-      setIsAnimating(true);
+      setShouldRender(true);
       const timer = setTimeout(() => {
-        setIsVisible(false);
-        setIsAnimating(true);
+        setIsAnimateIn(true);
+      }, 10);
+      return () => clearTimeout(timer);
+    } else {
+      setIsAnimateIn(false);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
       }, 150);
       return () => clearTimeout(timer);
     }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   React.useEffect(() => {
-    if (!isVisible) {
+    if (shouldRender) {
+      document.body.style.overflow = 'hidden';
+    } else {
       document.body.style.overflow = 'unset';
     }
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isVisible]);
+  }, [shouldRender]);
 
   const getVariantStyles = () => {
     switch (variant) {
@@ -84,24 +82,23 @@ export function Alert({
     }
   };
 
-  if (!isVisible) return null;
+  if (!shouldRender) return null;
 
   const styles = getVariantStyles();
-  const shouldAnimate = isAnimating || !isOpen;
 
   return createPortal(
     <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
       <div
         className={cn(
           'fixed inset-0 bg-background/40 backdrop-blur-md transition-opacity duration-150',
-          shouldAnimate ? 'opacity-0' : 'opacity-100'
+          !isAnimateIn ? 'opacity-0' : 'opacity-100'
         )}
         onClick={onClose}
       />
       <div
         className={cn(
           'relative w-full max-w-md bg-card border border-border/50 rounded-3xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] transition-all duration-150 overflow-hidden',
-          shouldAnimate ? 'opacity-0 scale-95' : 'opacity-100 scale-100',
+          !isAnimateIn ? 'opacity-0 scale-95' : 'opacity-100 scale-100',
           className
         )}
       >
@@ -148,7 +145,6 @@ export function Alert({
           </Button>
         </div>
 
-        {/* Subtle decorative element */}
         <div className="absolute top-0 right-0 p-4">
           <button
             onClick={onClose}
