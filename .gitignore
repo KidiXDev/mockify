@@ -34,3 +34,6 @@ coverage
 
 # TypeScript
 *.tsbuildinfo
+
+# Private Key
+private.pem
