@@ -4,6 +4,17 @@
 
 ## Getting Started
 
+### Installation (Stable Release)
+
+1. Go to the [Reactions Releases](https://github.com/KidiXDev/mockify/releases) page.
+2. Download the latest `mockify-x.x.x.zip` file.
+3. Extract the contents of the ZIP file to a permanent folder on your computer.
+4. Load the extension in Chrome:
+   - Open Chrome and navigate to `chrome://extensions/`.
+   - Enable **Developer mode** in the top right corner.
+   - Click the **Load unpacked** button.
+   - Select the extracted folder (the one containing `manifest.json`).
+
 ### Installation (Development)
 
 1. Clone the repository:
