@@ -97,14 +97,20 @@ export function Popover({
                   ? 'translateX(-100%)'
                   : align === 'center'
                     ? 'translateX(-50%)'
-                    : 'none'
+                    : 'none',
+              position: 'fixed',
+              zIndex: 100
             }}
-            className={cn(
-              'fixed z-100 bg-card border border-border rounded-lg shadow-xl py-1 animate-in fade-in zoom-in-95 duration-100',
-              className
-            )}
           >
-            {children}
+            <div
+              className={cn(
+                'bg-card border border-border rounded-lg shadow-xl py-1 animate-in fade-in zoom-in-95 duration-100',
+                align === 'right' ? 'origin-top-right' : 'origin-top-left',
+                className
+              )}
+            >
+              {children}
+            </div>
           </div>,
           document.body
         )}
