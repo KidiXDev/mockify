@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Popover } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
 import { useRuleStore } from '@/store/useRuleStore';
 import type { MockRule } from '@/types/rule';
@@ -16,6 +17,7 @@ import {
   Pause,
   Plus,
   Search,
+  Send,
   Settings2,
   Trash2,
   Upload,
@@ -53,6 +55,10 @@ function App() {
 
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [newProfileName, setNewProfileName] = useState('');
+  const [newRuleType, setNewRuleType] = useState<'request' | 'response'>(
+    'response'
+  );
+  const [isNewRulePopoverOpen, setIsNewRulePopoverOpen] = useState(false);
 
   useEffect(() => {
     const cleanup = initialize();
@@ -78,9 +84,11 @@ function App() {
     );
   }, [rules, searchQuery]);
 
-  const handleCreate = () => {
+  const handleCreate = (type: 'request' | 'response') => {
+    setNewRuleType(type);
     setEditingRule(null);
     setIsEditorOpen(true);
+    setIsNewRulePopoverOpen(false);
   };
 
   const handleEdit = (rule: MockRule) => {
@@ -450,13 +458,58 @@ function App() {
                 className="pl-10 h-10 bg-secondary/20 border-border/30 focus:border-primary/50 focus:bg-secondary/40 transition-all rounded-xl text-sm"
               />
             </div>
-            <Button
-              onClick={handleCreate}
-              className="h-10 px-5 gap-2 shadow-lg shadow-primary/20 active:scale-[0.98] transition-all font-bold rounded-xl"
+            <Popover
+              open={isNewRulePopoverOpen}
+              onOpenChange={setIsNewRulePopoverOpen}
+              trigger={
+                <Button className="h-10 px-5 gap-2 shadow-lg shadow-primary/20 active:scale-[0.98] transition-all font-bold rounded-xl">
+                  <Plus className="w-4 h-4" />
+                  New Rule
+                </Button>
+              }
+              align="right"
+              className="w-56 p-2 bg-[#0a0f25] border-border/50"
             >
-              <Plus className="w-4 h-4" />
-              New Rule
-            </Button>
+              <div className="flex flex-col gap-1">
+                <div className="px-2 py-1.5 mb-1">
+                  <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                    Select Rule Type
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleCreate('response')}
+                  className="flex items-center gap-3 w-full p-2.5 rounded-xl text-left hover:bg-primary/10 group transition-all"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Zap className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                      Modify Response
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Mock status code and body
+                    </span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleCreate('request')}
+                  className="flex items-center gap-3 w-full p-2.5 rounded-xl text-left hover:bg-primary/10 group transition-all"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Send className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                      Modify Request
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Change method, body or params
+                    </span>
+                  </div>
+                </button>
+              </div>
+            </Popover>
             <Button
               variant="outline"
               size="icon"
@@ -484,7 +537,7 @@ function App() {
                   intercepting and mocking requests.
                 </p>
                 <Button
-                  onClick={handleCreate}
+                  onClick={() => setIsNewRulePopoverOpen(true)}
                   variant="secondary"
                   className="px-8 h-12 rounded-xl font-bold bg-secondary/80 hover:bg-secondary transition-all"
                 >
@@ -557,20 +610,43 @@ function App() {
 
                       <div className="flex items-center gap-3 shrink-0">
                         <div className="hidden lg:flex items-center gap-1.5 mr-4 border-r border-border/50 pr-4">
-                          <Badge
-                            variant={
-                              rule.responseType === 'json' ? 'amber' : 'blue'
-                            }
-                            className="px-1.5 py-0 text-[9px] font-black uppercase tracking-tighter"
-                          >
-                            {rule.responseType}
-                          </Badge>
-                          <Badge
-                            variant="secondary"
-                            className="px-1.5 py-0 text-[9px] font-black bg-background/50 border-border/30"
-                          >
-                            {rule.statusCode || 200}
-                          </Badge>
+                          {rule.modifyRequest ? (
+                            <>
+                              <Badge
+                                variant="default"
+                                className="px-1.5 py-0 text-[9px] font-black uppercase tracking-tighter bg-amber-500/20 text-amber-500 border-amber-500/30"
+                              >
+                                Modify
+                              </Badge>
+                              {rule.requestMethod && (
+                                <Badge
+                                  variant="secondary"
+                                  className="px-1.5 py-0 text-[9px] font-black bg-background/50 border-border/30"
+                                >
+                                  {rule.requestMethod}
+                                </Badge>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <Badge
+                                variant={
+                                  rule.responseType === 'json'
+                                    ? 'amber'
+                                    : 'blue'
+                                }
+                                className="px-1.5 py-0 text-[9px] font-black uppercase tracking-tighter"
+                              >
+                                {rule.responseType}
+                              </Badge>
+                              <Badge
+                                variant="secondary"
+                                className="px-1.5 py-0 text-[9px] font-black bg-background/50 border-border/30"
+                              >
+                                {rule.statusCode || 200}
+                              </Badge>
+                            </>
+                          )}
                           {rule.delay > 0 && (
                             <Badge
                               variant="secondary"
@@ -623,13 +699,34 @@ function App() {
       <Dialog
         isOpen={isEditorOpen}
         onClose={() => setIsEditorOpen(false)}
-        title={editingRule ? 'Modify Interceptor Rule' : 'New Interceptor Rule'}
-        description="Configure how Mockify should handle specific network requests."
+        title={
+          editingRule
+            ? editingRule.modifyRequest
+              ? 'Modify Request Rule'
+              : 'Modify Response Rule'
+            : newRuleType === 'request'
+              ? 'New Request Modification'
+              : 'New Response Mock'
+        }
+        description={
+          editingRule
+            ? 'Update your interception rule configuration.'
+            : newRuleType === 'request'
+              ? 'Configure how to intercept and modify an outgoing request.'
+              : 'Configure how to mock a response for a specific URL.'
+        }
         className="max-w-3xl"
       >
         <RuleEditor
-          key={editingRule?.id ?? 'new'}
+          key={editingRule?.id ?? `new-${newRuleType}`}
           initialData={editingRule}
+          mode={
+            editingRule
+              ? editingRule.modifyRequest
+                ? 'request'
+                : 'response'
+              : newRuleType
+          }
           onSave={handleSave}
           onCancel={() => setIsEditorOpen(false)}
         />

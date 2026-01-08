@@ -76,10 +76,14 @@ const notificationTimeouts = new WeakMap<
   ReturnType<typeof setTimeout>
 >();
 
-function showNotification(url: string) {
+function showNotification(url: string, type: 'mocked' | 'modified' = 'mocked') {
   const id = 'mockify-notification-root';
   let container = document.getElementById(id);
   let banner: HTMLDivElement;
+
+  const isMocked = type === 'mocked';
+  const title = isMocked ? 'Response Mocked' : 'Request Modified';
+  const iconColor = isMocked ? '#3b82f6' : '#f59e0b';
 
   if (!container) {
     container = document.createElement('div');
@@ -122,13 +126,16 @@ function showNotification(url: string) {
       .icon-wrapper {
         width: 38px;
         height: 38px;
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        background: linear-gradient(135deg, var(--icon-color-1) 0%, var(--icon-color-2) 100%);
         border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      }
+      .icon-wrapper.modified {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
       }
       .content {
         flex: 1;
@@ -175,15 +182,18 @@ function showNotification(url: string) {
         position: absolute;
         width: 8px;
         height: 8px;
-        background: #10b981;
+        background: var(--pulse-color);
         border-radius: 50%;
         top: -2px;
         right: -2px;
-        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        box-shadow: 0 0 0 0 var(--pulse-shadow);
         animation: pulse-animation 2s infinite;
       }
+      .pulse.modified {
+        background: #f59e0b;
+      }
       @keyframes pulse-animation {
-        0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        0% { box-shadow: 0 0 0 0 var(--pulse-shadow); }
         70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
         100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
       }
@@ -191,18 +201,25 @@ function showNotification(url: string) {
 
     banner = document.createElement('div');
     banner.className = 'banner';
+    banner.style.setProperty('--icon-color-1', iconColor);
+    banner.style.setProperty('--icon-color-2', isMocked ? '#2563eb' : '#d97706');
+    banner.style.setProperty('--pulse-color', isMocked ? '#10b981' : '#f59e0b');
+    banner.style.setProperty('--pulse-shadow', isMocked ? 'rgba(16, 185, 129, 0.7)' : 'rgba(245, 158, 11, 0.7)');
 
     banner.innerHTML = `
-      <div class="icon-wrapper">
+      <div class="icon-wrapper ${type}">
         <div style="position: relative;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          ${isMocked ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-          </svg>
-          <div class="pulse"></div>
+          </svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>`}
+          <div class="pulse ${type}"></div>
         </div>
       </div>
       <div class="content">
-        <p class="title">Response Mocked</p>
+        <p class="title">${title}</p>
         <p class="subtitle" title="${url}">${url}</p>
       </div>
       <button class="close-btn" aria-label="Close">
@@ -224,11 +241,38 @@ function showNotification(url: string) {
     document.body.appendChild(container);
   } else {
     banner = container.shadowRoot?.querySelector('.banner') as HTMLDivElement;
+    const titleElem = banner.querySelector('.title') as HTMLParagraphElement;
     const subtitle = banner.querySelector('.subtitle') as HTMLParagraphElement;
+    const iconWrapper = banner.querySelector('.icon-wrapper') as HTMLDivElement;
+    const pulse = banner.querySelector('.pulse') as HTMLDivElement;
+    
+    if (titleElem) titleElem.textContent = title;
     if (subtitle) {
       subtitle.textContent = url;
       subtitle.title = url;
     }
+    if (iconWrapper) {
+      iconWrapper.className = `icon-wrapper ${type}`;
+      iconWrapper.innerHTML = `
+        <div style="position: relative;">
+          ${isMocked ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>` : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>`}
+          <div class="pulse ${type}"></div>
+        </div>
+      `;
+    }
+    if (pulse) {
+      pulse.className = `pulse ${type}`;
+    }
+
+    banner.style.setProperty('--icon-color-1', iconColor);
+    banner.style.setProperty('--icon-color-2', isMocked ? '#2563eb' : '#d97706');
+    banner.style.setProperty('--pulse-color', isMocked ? '#10b981' : '#f59e0b');
+    banner.style.setProperty('--pulse-shadow', isMocked ? 'rgba(16, 185, 129, 0.7)' : 'rgba(245, 158, 11, 0.7)');
   }
 
   // Reset or start animation
@@ -271,7 +315,11 @@ async function init() {
     }
 
     if (event.data && event.data.type === 'MOCKIFY_MOCK_APPLIED') {
-      showNotification(event.data.url);
+      showNotification(event.data.url, 'mocked');
+    }
+
+    if (event.data && event.data.type === 'MOCKIFY_REQUEST_MODIFIED') {
+      showNotification(event.data.url, 'modified');
     }
   });
 

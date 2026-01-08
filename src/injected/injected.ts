@@ -7,6 +7,11 @@ interface MockRule {
   mockResponse: string;
   statusCode: number;
   delay: number;
+  // Request modification fields
+  modifyRequest?: boolean;
+  requestMethod?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  requestBody?: string;
+  queryParams?: string;
 }
 
 interface MockifyConfig {
@@ -25,6 +30,13 @@ interface MockifyConfig {
   const originalFetch = window.fetch;
   const originalXHROpen = XMLHttpRequest.prototype.open;
   const originalXHRSend = XMLHttpRequest.prototype.send;
+
+  // Extended XMLHttpRequest type with mockify properties
+  type MockifyXHR = XMLHttpRequest & {
+    _mockifyUrl: string;
+    _mockifyOriginalUrl: string;
+    _mockifyMethod: string;
+  };
 
   function findMatchingRule(url: string): MockRule | undefined {
     if (!config.enabled || !configReceived) return undefined;
@@ -83,6 +95,32 @@ interface MockifyConfig {
     return statusTexts[code] || 'Unknown';
   }
 
+  function applyQueryParams(url: string, queryParams: string): string {
+    if (!queryParams || !queryParams.trim()) return url;
+
+    try {
+      const urlObj = new URL(url, window.location.origin);
+      const params = new URLSearchParams(queryParams);
+      
+      params.forEach((value, key) => {
+        urlObj.searchParams.set(key, value);
+      });
+      
+      return urlObj.toString();
+    } catch (e) {
+      console.error('[Mockify] Error applying query params:', e);
+      return url;
+    }
+  }
+
+  function prepareRequestBody(rule: MockRule, originalBody?: BodyInit | null | undefined): BodyInit | null | undefined {
+    if (!rule.modifyRequest || !rule.requestBody) return originalBody;
+    
+    // Return the pre-validated request body string
+    // Note: Validation should be done when rule is saved, not on every request
+    return rule.requestBody;
+  }
+
   const sleep = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -100,6 +138,42 @@ interface MockifyConfig {
     const matchingRule = findMatchingRule(url);
 
     if (matchingRule) {
+      // If rule is set to modify request instead of mocking response
+      if (matchingRule.modifyRequest) {
+        console.log(
+          `%c[Mockify] Modifying request: ${url}`,
+          'color: #f59e0b; font-weight: bold;'
+        );
+
+        // Modify URL with query parameters
+        let modifiedUrl = url;
+        if (matchingRule.queryParams) {
+          modifiedUrl = applyQueryParams(url, matchingRule.queryParams);
+          console.log(`%c[Mockify] Modified URL: ${modifiedUrl}`, 'color: #f59e0b;');
+        }
+
+        // Prepare modified request init
+        const modifiedInit: RequestInit = { ...init };
+        
+        // Modify HTTP method
+        if (matchingRule.requestMethod) {
+          modifiedInit.method = matchingRule.requestMethod;
+          console.log(`%c[Mockify] Modified method: ${matchingRule.requestMethod}`, 'color: #f59e0b;');
+        }
+
+        // Modify request body
+        if (matchingRule.requestBody) {
+          modifiedInit.body = prepareRequestBody(matchingRule, init?.body);
+          console.log(`%c[Mockify] Modified body: ${modifiedInit.body}`, 'color: #f59e0b;');
+        }
+
+        window.postMessage({ type: 'MOCKIFY_REQUEST_MODIFIED', url: modifiedUrl }, '*');
+        
+        // Send the modified request
+        return originalFetch.apply(window, [modifiedUrl, modifiedInit]);
+      }
+
+      // Original mocking behavior
       console.log(
         `%c[Mockify] Intercepted fetch: ${url} (Delay: ${matchingRule.delay}ms)`,
         'color: #10b981; font-weight: bold;'
@@ -123,11 +197,35 @@ interface MockifyConfig {
     username?: string | null,
     password?: string | null
   ): void {
-    (this as XMLHttpRequest & { _mockifyUrl: string })._mockifyUrl =
-      typeof url === 'string' ? url : url.href;
+    const urlString = typeof url === 'string' ? url : url.href;
+    const matchingRule = findMatchingRule(urlString);
+    
+    let modifiedUrl = urlString;
+    let modifiedMethod = method;
+
+    // Check if we should modify the request
+    if (matchingRule && matchingRule.modifyRequest) {
+      // Modify URL with query parameters
+      if (matchingRule.queryParams) {
+        modifiedUrl = applyQueryParams(urlString, matchingRule.queryParams);
+        console.log(`%c[Mockify] XHR Modified URL: ${modifiedUrl}`, 'color: #f59e0b;');
+      }
+
+      // Modify HTTP method
+      if (matchingRule.requestMethod) {
+        modifiedMethod = matchingRule.requestMethod;
+        console.log(`%c[Mockify] XHR Modified method: ${modifiedMethod}`, 'color: #f59e0b;');
+      }
+    }
+
+    const xhr = this as MockifyXHR;
+    xhr._mockifyUrl = modifiedUrl;
+    xhr._mockifyOriginalUrl = urlString;
+    xhr._mockifyMethod = modifiedMethod;
+
     return originalXHROpen.apply(this, [
-      method,
-      url,
+      modifiedMethod,
+      modifiedUrl,
       async,
       username,
       password
@@ -137,12 +235,34 @@ interface MockifyConfig {
   XMLHttpRequest.prototype.send = function (
     body?: Document | XMLHttpRequestBodyInit | null
   ): void {
-    const xhr = this as XMLHttpRequest & { _mockifyUrl: string };
-    const url = xhr._mockifyUrl;
+    const xhr = this as MockifyXHR;
+    const url = xhr._mockifyOriginalUrl || xhr._mockifyUrl;
 
     const matchingRule = findMatchingRule(url);
 
     if (matchingRule) {
+      // If rule is set to modify request instead of mocking response
+      if (matchingRule.modifyRequest) {
+        console.log(
+          `%c[Mockify] Modifying XHR request: ${url}`,
+          'color: #f59e0b; font-weight: bold;'
+        );
+
+        // Modify request body
+        let modifiedBody: Document | XMLHttpRequestBodyInit | null | undefined = body;
+        if (matchingRule.requestBody) {
+          const bodyStr = prepareRequestBody(matchingRule, body as BodyInit | null | undefined);
+          modifiedBody = bodyStr as Document | XMLHttpRequestBodyInit | null | undefined;
+          console.log(`%c[Mockify] XHR Modified body: ${modifiedBody}`, 'color: #f59e0b;');
+        }
+
+        window.postMessage({ type: 'MOCKIFY_REQUEST_MODIFIED', url: xhr._mockifyUrl }, '*');
+        
+        // Send the modified request
+        return originalXHRSend.apply(this, [modifiedBody]);
+      }
+
+      // Original mocking behavior
       console.log(
         `%c[Mockify] Intercepted XHR: ${url} (Delay: ${matchingRule.delay}ms)`,
         'color: #10b981; font-weight: bold;'

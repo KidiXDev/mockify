@@ -9,6 +9,11 @@ export interface MockRule {
   mockResponse: string;
   statusCode: number;
   delay: number; // in milliseconds
+  // Request modification fields
+  modifyRequest?: boolean;
+  requestMethod?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  requestBody?: string;
+  queryParams?: string;
 }
 
 export interface Profile {

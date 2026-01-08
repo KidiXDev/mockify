@@ -18,17 +18,25 @@ import {
   FileJson,
   FileText,
   Link2,
-  Tag
+  Send,
+  Tag,
+  Zap
 } from 'lucide-react';
 import { useState } from 'react';
 
 interface RuleEditorProps {
   initialData?: MockRule | null;
+  mode: 'request' | 'response';
   onSave: (data: Omit<MockRule, 'id'>) => void;
   onCancel: () => void;
 }
 
-export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
+export function RuleEditor({
+  initialData,
+  mode,
+  onSave,
+  onCancel
+}: RuleEditorProps) {
   const { confirm } = useAlert();
   const [formData, setFormData] = useState({
     name: initialData?.name ?? '',
@@ -39,7 +47,11 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
     mockResponse: initialData?.mockResponse ?? '',
     statusCode: initialData?.statusCode ?? 200,
     delay: initialData?.delay ?? 0,
-    enabled: initialData?.enabled ?? true
+    enabled: initialData?.enabled ?? true,
+    modifyRequest: mode === 'request',
+    requestMethod: initialData?.requestMethod ?? 'POST',
+    requestBody: initialData?.requestBody ?? '',
+    queryParams: initialData?.queryParams ?? ''
   });
 
   const handleBeautify = () => {
@@ -73,6 +85,44 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
         title: 'Format Error',
         description:
           'The response content is not valid JSON and cannot be minified.',
+        variant: 'warning',
+        confirmText: 'Got it',
+        showCancel: false
+      });
+    }
+  };
+
+  const handleBeautifyRequestBody = () => {
+    try {
+      const parsed = JSON.parse(formData.requestBody);
+      setFormData({
+        ...formData,
+        requestBody: JSON.stringify(parsed, null, 2)
+      });
+    } catch {
+      confirm({
+        title: 'Format Error',
+        description:
+          'The request body is not valid JSON and cannot be beautified.',
+        variant: 'warning',
+        confirmText: 'Got it',
+        showCancel: false
+      });
+    }
+  };
+
+  const handleMinifyRequestBody = () => {
+    try {
+      const parsed = JSON.parse(formData.requestBody);
+      setFormData({
+        ...formData,
+        requestBody: JSON.stringify(parsed)
+      });
+    } catch {
+      confirm({
+        title: 'Format Error',
+        description:
+          'The request body is not valid JSON and cannot be minified.',
         variant: 'warning',
         confirmText: 'Got it',
         showCancel: false
@@ -170,268 +220,491 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
-              <Activity className="w-4 h-4 text-primary" />
-              Status Code
-            </label>
-            <div className="relative group">
+        {/* Request Modification Information (Visual only, no toggle) */}
+        {mode === 'request' && (
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
+            <Send className="w-5 h-5 text-primary" />
+            <div>
+              <span className="text-sm font-semibold text-foreground block">
+                Request Modification Mode
+              </span>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Intercepting and modifying the outgoing request parameters.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {mode === 'response' && (
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+            <Zap className="w-5 h-5 text-amber-500" />
+            <div>
+              <span className="text-sm font-semibold text-foreground block">
+                Response Interception Mode
+              </span>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Mocking the service response with custom data.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Request Modification Fields */}
+        {mode === 'request' && (
+          <div className="space-y-4 p-4 rounded-lg bg-primary/5 border border-primary/20">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-primary" />
+                HTTP Method
+              </label>
               <Select
-                value={String(formData.statusCode)}
-                onValueChange={(val: string | number) =>
+                value={formData.requestMethod}
+                onValueChange={(val: string | number) => {
+                  const method = String(val);
+                  // Validate that the method is one of the allowed values
+                  if (
+                    ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].includes(method)
+                  ) {
+                    setFormData({
+                      ...formData,
+                      requestMethod: method as
+                        | 'GET'
+                        | 'POST'
+                        | 'PUT'
+                        | 'DELETE'
+                        | 'PATCH'
+                    });
+                  }
+                }}
+              >
+                <SelectGroup label="HTTP Methods">
+                  <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="POST">POST</SelectItem>
+                  <SelectItem value="PUT">PUT</SelectItem>
+                  <SelectItem value="DELETE">DELETE</SelectItem>
+                  <SelectItem value="PATCH">PATCH</SelectItem>
+                </SelectGroup>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Override the HTTP method of the request
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-primary" />
+                Query Parameters
+              </label>
+              <Input
+                type="text"
+                value={formData.queryParams}
+                onChange={(e) =>
+                  setFormData({ ...formData, queryParams: e.target.value })
+                }
+                placeholder="e.g. key1=value1&key2=value2"
+                className="bg-background/50 border-border/50 focus:border-primary/50 font-mono text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Add or override URL query parameters (format:
+                key1=value1&key2=value2)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                  <Code2 className="w-4 h-4 text-primary" />
+                  Request Body (JSON)
+                </label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 text-[11px] px-2 gap-1.5"
+                    onClick={handleBeautifyRequestBody}
+                  >
+                    Beautify
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 text-[11px] px-2"
+                    onClick={handleMinifyRequestBody}
+                  >
+                    Minify
+                  </Button>
+                </div>
+              </div>
+              <div className="relative group border border-border/50 rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/50 transition-all bg-card">
+                <CodeMirror
+                  value={formData.requestBody}
+                  height="min(20vh, 300px)"
+                  theme={oneDark}
+                  extensions={[
+                    json(),
+                    EditorView.lineWrapping,
+                    EditorView.theme({
+                      '&': {
+                        backgroundColor: 'transparent !important',
+                        lineHeight: '1.5',
+                        fontSize: '12px'
+                      },
+                      '.cm-gutters': {
+                        backgroundColor: 'transparent !important',
+                        border: 'none'
+                      },
+                      '.cm-content': {
+                        padding: '8px 0',
+                        height: 'auto !important'
+                      },
+                      '.cm-cursor': {
+                        height: '1.2em !important'
+                      },
+                      '.cm-placeholder': {
+                        position: 'absolute !important',
+                        left: '8px',
+                        color: 'var(--color-muted-foreground) !important',
+                        opacity: '0.4',
+                        whiteSpace: 'pre-wrap',
+                        pointerEvents: 'none'
+                      },
+                      '.cm-line': {
+                        position: 'relative',
+                        lineHeight: '1.5',
+                        padding: '0 8px'
+                      },
+                      '.cm-scroller::-webkit-scrollbar': {
+                        width: '6px',
+                        height: '6px'
+                      },
+                      '.cm-scroller::-webkit-scrollbar-track': {
+                        background: 'transparent'
+                      },
+                      '.cm-scroller::-webkit-scrollbar-thumb': {
+                        background: 'var(--color-border)',
+                        borderRadius: '10px'
+                      },
+                      '.cm-scroller::-webkit-scrollbar-thumb:hover': {
+                        background: '#334155'
+                      }
+                    })
+                  ]}
+                  onChange={(value) =>
+                    setFormData({ ...formData, requestBody: value })
+                  }
+                  placeholder='{\n  "key": "value"\n}'
+                  className="text-xs font-mono"
+                  basicSetup={{
+                    lineNumbers: false,
+                    foldGutter: false,
+                    dropCursor: true,
+                    allowMultipleSelections: false,
+                    indentOnInput: true,
+                    bracketMatching: true,
+                    closeBrackets: true,
+                    autocompletion: true,
+                    rectangularSelection: true,
+                    crosshairCursor: true,
+                    highlightActiveLine: false,
+                    highlightSelectionMatches: true,
+                    searchKeymap: false,
+                    historyKeymap: false,
+                    drawSelection: false,
+                    tabSize: 2
+                  }}
+                />
+                <div className="flex items-center justify-end px-3 py-1.5 bg-background/40 border-t border-border/30">
+                  <span className="text-[10px] text-muted-foreground/60 font-mono">
+                    {formData.requestBody.length} characters
+                  </span>
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Replace the request body with this JSON content
+              </p>
+            </div>
+          </div>
+        )}
+
+        {mode === 'response' && (
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-primary" />
+                  Status Code
+                </label>
+                <div className="relative group">
+                  <Select
+                    value={String(formData.statusCode)}
+                    onValueChange={(val: string | number) =>
+                      setFormData({
+                        ...formData,
+                        statusCode:
+                          typeof val === 'string' ? parseInt(val) || 200 : val
+                      })
+                    }
+                  >
+                    <SelectGroup label="2xx Success">
+                      <SelectItem value="200">200 OK</SelectItem>
+                      <SelectItem value="201">201 Created</SelectItem>
+                      <SelectItem value="204">204 No Content</SelectItem>
+                    </SelectGroup>
+                    <SelectGroup label="3xx Redirection">
+                      <SelectItem value="301">301 Moved Permanently</SelectItem>
+                      <SelectItem value="302">302 Found</SelectItem>
+                      <SelectItem value="307">
+                        307 Temporary Redirect
+                      </SelectItem>
+                    </SelectGroup>
+                    <SelectGroup label="4xx Client Error">
+                      <SelectItem value="400">400 Bad Request</SelectItem>
+                      <SelectItem value="401">401 Unauthorized</SelectItem>
+                      <SelectItem value="403">403 Forbidden</SelectItem>
+                      <SelectItem value="404">404 Not Found</SelectItem>
+                      <SelectItem value="409">409 Conflict</SelectItem>
+                      <SelectItem value="422">
+                        422 Unprocessable Content
+                      </SelectItem>
+                      <SelectItem value="429">429 Too Many Requests</SelectItem>
+                    </SelectGroup>
+                    <SelectGroup label="5xx Server Error">
+                      <SelectItem value="500">
+                        500 Internal Server Error
+                      </SelectItem>
+                      <SelectItem value="502">502 Bad Gateway</SelectItem>
+                      <SelectItem value="503">
+                        503 Service Unavailable
+                      </SelectItem>
+                      <SelectItem value="504">504 Gateway Timeout</SelectItem>
+                    </SelectGroup>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" />
+                  Delay (ms)
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={100}
+                  value={formData.delay}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      delay: parseInt(e.target.value) || 0
+                    })
+                  }
+                  className="bg-background/50 border-border/50 focus:border-primary/50"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                <FileJson className="w-4 h-4 text-primary" />
+                Response Type
+              </label>
+              <Tabs
+                value={formData.responseType}
+                onValueChange={(val) =>
                   setFormData({
                     ...formData,
-                    statusCode:
-                      typeof val === 'string' ? parseInt(val) || 200 : val
+                    responseType: val as 'json' | 'text'
                   })
                 }
               >
-                <SelectGroup label="2xx Success">
-                  <SelectItem value="200">200 OK</SelectItem>
-                  <SelectItem value="201">201 Created</SelectItem>
-                  <SelectItem value="204">204 No Content</SelectItem>
-                </SelectGroup>
-                <SelectGroup label="3xx Redirection">
-                  <SelectItem value="301">301 Moved Permanently</SelectItem>
-                  <SelectItem value="302">302 Found</SelectItem>
-                  <SelectItem value="307">307 Temporary Redirect</SelectItem>
-                </SelectGroup>
-                <SelectGroup label="4xx Client Error">
-                  <SelectItem value="400">400 Bad Request</SelectItem>
-                  <SelectItem value="401">401 Unauthorized</SelectItem>
-                  <SelectItem value="403">403 Forbidden</SelectItem>
-                  <SelectItem value="404">404 Not Found</SelectItem>
-                  <SelectItem value="409">409 Conflict</SelectItem>
-                  <SelectItem value="422">422 Unprocessable Content</SelectItem>
-                  <SelectItem value="429">429 Too Many Requests</SelectItem>
-                </SelectGroup>
-                <SelectGroup label="5xx Server Error">
-                  <SelectItem value="500">500 Internal Server Error</SelectItem>
-                  <SelectItem value="502">502 Bad Gateway</SelectItem>
-                  <SelectItem value="503">503 Service Unavailable</SelectItem>
-                  <SelectItem value="504">504 Gateway Timeout</SelectItem>
-                </SelectGroup>
-              </Select>
+                <TabsList className="w-full bg-background/50 border border-border/50 p-1 h-11">
+                  <TabsTrigger
+                    value="json"
+                    className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                  >
+                    JSON
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="text"
+                    className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                  >
+                    Plain Text
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" />
-              Delay (ms)
-            </label>
-            <Input
-              type="number"
-              min={0}
-              step={100}
-              value={formData.delay}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  delay: parseInt(e.target.value) || 0
-                })
-              }
-              className="bg-background/50 border-border/50 focus:border-primary/50"
-            />
-          </div>
-        </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
-            <FileJson className="w-4 h-4 text-primary" />
-            Response Type
-          </label>
-          <Tabs
-            value={formData.responseType}
-            onValueChange={(val) =>
-              setFormData({ ...formData, responseType: val as 'json' | 'text' })
-            }
-          >
-            <TabsList className="w-full bg-background/50 border border-border/50 p-1 h-11">
-              <TabsTrigger
-                value="json"
-                className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-              >
-                JSON
-              </TabsTrigger>
-              <TabsTrigger
-                value="text"
-                className="flex-1 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-              >
-                Plain Text
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
-              <Code2 className="w-4 h-4 text-primary" />
-              Mock Response
-            </label>
-            {formData.responseType === 'json' && (
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="h-7 text-[11px] px-2 gap-1.5"
-                  onClick={handleBeautify}
-                >
-                  Beautify
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="h-7 text-[11px] px-2"
-                  onClick={handleMinify}
-                >
-                  Minify
-                </Button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                  <Code2 className="w-4 h-4 text-primary" />
+                  Mock Response
+                </label>
+                {formData.responseType === 'json' && (
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="h-7 text-[11px] px-2 gap-1.5"
+                      onClick={handleBeautify}
+                    >
+                      Beautify
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="h-7 text-[11px] px-2"
+                      onClick={handleMinify}
+                    >
+                      Minify
+                    </Button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div className="relative group border border-border/50 rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/50 transition-all bg-card">
-            <CodeMirror
-              value={formData.mockResponse}
-              height="min(30vh, 400px)"
-              theme={oneDark}
-              extensions={
-                formData.responseType === 'json'
-                  ? [
-                      json(),
-                      EditorView.lineWrapping,
-                      EditorView.theme({
-                        '&': {
-                          backgroundColor: 'transparent !important',
-                          lineHeight: '1.5',
-                          fontSize: '12px'
-                        },
-                        '.cm-gutters': {
-                          backgroundColor: 'transparent !important',
-                          border: 'none'
-                        },
-                        '.cm-content': {
-                          padding: '8px 0',
-                          height: 'auto !important'
-                        },
-                        '.cm-cursor': {
-                          height: '1.2em !important'
-                        },
-                        '.cm-placeholder': {
-                          position: 'absolute !important',
-                          left: '8px',
-                          color: 'var(--color-muted-foreground) !important',
-                          opacity: '0.4',
-                          whiteSpace: 'pre-wrap',
-                          pointerEvents: 'none'
-                        },
-                        '.cm-line': {
-                          position: 'relative',
-                          lineHeight: '1.5',
-                          padding: '0 8px'
-                        },
-                        '.cm-scroller::-webkit-scrollbar': {
-                          width: '6px',
-                          height: '6px'
-                        },
-                        '.cm-scroller::-webkit-scrollbar-track': {
-                          background: 'transparent'
-                        },
-                        '.cm-scroller::-webkit-scrollbar-thumb': {
-                          background: 'var(--color-border)',
-                          borderRadius: '10px'
-                        },
-                        '.cm-scroller::-webkit-scrollbar-thumb:hover': {
-                          background: '#334155'
-                        }
-                      })
-                    ]
-                  : [
-                      EditorView.theme({
-                        '&': {
-                          backgroundColor: 'transparent !important',
-                          lineHeight: '1.5',
-                          fontSize: '12px'
-                        },
-                        '.cm-gutters': {
-                          backgroundColor: 'transparent !important',
-                          border: 'none'
-                        },
-                        '.cm-content': {
-                          padding: '8px 0',
-                          height: 'auto !important'
-                        },
-                        '.cm-cursor': {
-                          height: '1.2em !important'
-                        },
-                        '.cm-placeholder': {
-                          position: 'absolute !important',
-                          left: '8px',
-                          color: 'var(--color-muted-foreground) !important',
-                          opacity: '0.4',
-                          whiteSpace: 'pre-wrap',
-                          pointerEvents: 'none'
-                        },
-                        '.cm-line': {
-                          position: 'relative',
-                          lineHeight: '1.5',
-                          padding: '0 8px'
-                        },
-                        '.cm-scroller::-webkit-scrollbar': {
-                          width: '6px',
-                          height: '6px'
-                        },
-                        '.cm-scroller::-webkit-scrollbar-track': {
-                          background: 'transparent'
-                        },
-                        '.cm-scroller::-webkit-scrollbar-thumb': {
-                          background: 'var(--color-border)',
-                          borderRadius: '10px'
-                        },
-                        '.cm-scroller::-webkit-scrollbar-thumb:hover': {
-                          background: '#334155'
-                        }
-                      })
-                    ]
-              }
-              onChange={(value) =>
-                setFormData({ ...formData, mockResponse: value })
-              }
-              placeholder={
-                formData.responseType === 'json'
-                  ? '{\n  "success": true,\n  "data": []\n}'
-                  : 'Hello World'
-              }
-              className="text-xs font-mono"
-              basicSetup={{
-                lineNumbers: false,
-                foldGutter: false,
-                dropCursor: true,
-                allowMultipleSelections: false,
-                indentOnInput: true,
-                bracketMatching: true,
-                closeBrackets: true,
-                autocompletion: true,
-                rectangularSelection: true,
-                crosshairCursor: true,
-                highlightActiveLine: false,
-                highlightSelectionMatches: true,
-                searchKeymap: false,
-                historyKeymap: false,
-                drawSelection: false,
-                tabSize: 2
-              }}
-            />
-            <div className="flex items-center justify-end px-3 py-1.5 bg-background/40 border-t border-border/30">
-              <span className="text-[10px] text-muted-foreground/60 font-mono">
-                {formData.mockResponse.length} characters
-              </span>
+              <div className="relative group border border-border/50 rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/50 transition-all bg-card">
+                <CodeMirror
+                  value={formData.mockResponse}
+                  height="min(30vh, 400px)"
+                  theme={oneDark}
+                  extensions={
+                    formData.responseType === 'json'
+                      ? [
+                          json(),
+                          EditorView.lineWrapping,
+                          EditorView.theme({
+                            '&': {
+                              backgroundColor: 'transparent !important',
+                              lineHeight: '1.5',
+                              fontSize: '12px'
+                            },
+                            '.cm-gutters': {
+                              backgroundColor: 'transparent !important',
+                              border: 'none'
+                            },
+                            '.cm-content': {
+                              padding: '8px 0',
+                              height: 'auto !important'
+                            },
+                            '.cm-cursor': {
+                              height: '1.2em !important'
+                            },
+                            '.cm-placeholder': {
+                              position: 'absolute !important',
+                              left: '8px',
+                              color: 'var(--color-muted-foreground) !important',
+                              opacity: '0.4',
+                              whiteSpace: 'pre-wrap',
+                              pointerEvents: 'none'
+                            },
+                            '.cm-line': {
+                              position: 'relative',
+                              lineHeight: '1.5',
+                              padding: '0 8px'
+                            },
+                            '.cm-scroller::-webkit-scrollbar': {
+                              width: '6px',
+                              height: '6px'
+                            },
+                            '.cm-scroller::-webkit-scrollbar-track': {
+                              background: 'transparent'
+                            },
+                            '.cm-scroller::-webkit-scrollbar-thumb': {
+                              background: 'var(--color-border)',
+                              borderRadius: '10px'
+                            },
+                            '.cm-scroller::-webkit-scrollbar-thumb:hover': {
+                              background: '#334155'
+                            }
+                          })
+                        ]
+                      : [
+                          EditorView.theme({
+                            '&': {
+                              backgroundColor: 'transparent !important',
+                              lineHeight: '1.5',
+                              fontSize: '12px'
+                            },
+                            '.cm-gutters': {
+                              backgroundColor: 'transparent !important',
+                              border: 'none'
+                            },
+                            '.cm-content': {
+                              padding: '8px 0',
+                              height: 'auto !important'
+                            },
+                            '.cm-cursor': {
+                              height: '1.2em !important'
+                            },
+                            '.cm-placeholder': {
+                              position: 'absolute !important',
+                              left: '8px',
+                              color: 'var(--color-muted-foreground) !important',
+                              opacity: '0.4',
+                              whiteSpace: 'pre-wrap',
+                              pointerEvents: 'none'
+                            },
+                            '.cm-line': {
+                              position: 'relative',
+                              lineHeight: '1.5',
+                              padding: '0 8px'
+                            },
+                            '.cm-scroller::-webkit-scrollbar': {
+                              width: '6px',
+                              height: '6px'
+                            },
+                            '.cm-scroller::-webkit-scrollbar-track': {
+                              background: 'transparent'
+                            },
+                            '.cm-scroller::-webkit-scrollbar-thumb': {
+                              background: 'var(--color-border)',
+                              borderRadius: '10px'
+                            },
+                            '.cm-scroller::-webkit-scrollbar-thumb:hover': {
+                              background: '#334155'
+                            }
+                          })
+                        ]
+                  }
+                  onChange={(value) =>
+                    setFormData({ ...formData, mockResponse: value })
+                  }
+                  placeholder={
+                    formData.responseType === 'json'
+                      ? '{\n  "success": true,\n  "data": []\n}'
+                      : 'Hello World'
+                  }
+                  className="text-xs font-mono"
+                  basicSetup={{
+                    lineNumbers: false,
+                    foldGutter: false,
+                    dropCursor: true,
+                    allowMultipleSelections: false,
+                    indentOnInput: true,
+                    bracketMatching: true,
+                    closeBrackets: true,
+                    autocompletion: true,
+                    rectangularSelection: true,
+                    crosshairCursor: true,
+                    highlightActiveLine: false,
+                    highlightSelectionMatches: true,
+                    searchKeymap: false,
+                    historyKeymap: false,
+                    drawSelection: false,
+                    tabSize: 2
+                  }}
+                />
+                <div className="flex items-center justify-end px-3 py-1.5 bg-background/40 border-t border-border/30">
+                  <span className="text-[10px] text-muted-foreground/60 font-mono">
+                    {formData.mockResponse.length} characters
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
         <div className="flex items-center justify-between p-4 rounded-lg bg-background/30 border border-border/30">
           <div className="flex items-center gap-3">
