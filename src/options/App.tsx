@@ -557,20 +557,41 @@ function App() {
 
                       <div className="flex items-center gap-3 shrink-0">
                         <div className="hidden lg:flex items-center gap-1.5 mr-4 border-r border-border/50 pr-4">
-                          <Badge
-                            variant={
-                              rule.responseType === 'json' ? 'amber' : 'blue'
-                            }
-                            className="px-1.5 py-0 text-[9px] font-black uppercase tracking-tighter"
-                          >
-                            {rule.responseType}
-                          </Badge>
-                          <Badge
-                            variant="secondary"
-                            className="px-1.5 py-0 text-[9px] font-black bg-background/50 border-border/30"
-                          >
-                            {rule.statusCode || 200}
-                          </Badge>
+                          {rule.modifyRequest ? (
+                            <>
+                              <Badge
+                                variant="default"
+                                className="px-1.5 py-0 text-[9px] font-black uppercase tracking-tighter bg-amber-500/20 text-amber-500 border-amber-500/30"
+                              >
+                                Modify
+                              </Badge>
+                              {rule.requestMethod && (
+                                <Badge
+                                  variant="secondary"
+                                  className="px-1.5 py-0 text-[9px] font-black bg-background/50 border-border/30"
+                                >
+                                  {rule.requestMethod}
+                                </Badge>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <Badge
+                                variant={
+                                  rule.responseType === 'json' ? 'amber' : 'blue'
+                                }
+                                className="px-1.5 py-0 text-[9px] font-black uppercase tracking-tighter"
+                              >
+                                {rule.responseType}
+                              </Badge>
+                              <Badge
+                                variant="secondary"
+                                className="px-1.5 py-0 text-[9px] font-black bg-background/50 border-border/30"
+                              >
+                                {rule.statusCode || 200}
+                              </Badge>
+                            </>
+                          )}
                           {rule.delay > 0 && (
                             <Badge
                               variant="secondary"

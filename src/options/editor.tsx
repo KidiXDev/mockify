@@ -18,6 +18,7 @@ import {
   FileJson,
   FileText,
   Link2,
+  Send,
   Tag
 } from 'lucide-react';
 import { useState } from 'react';
@@ -39,7 +40,11 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
     mockResponse: initialData?.mockResponse ?? '',
     statusCode: initialData?.statusCode ?? 200,
     delay: initialData?.delay ?? 0,
-    enabled: initialData?.enabled ?? true
+    enabled: initialData?.enabled ?? true,
+    modifyRequest: initialData?.modifyRequest ?? false,
+    requestMethod: initialData?.requestMethod ?? 'POST',
+    requestBody: initialData?.requestBody ?? '',
+    queryParams: initialData?.queryParams ?? ''
   });
 
   const handleBeautify = () => {
@@ -73,6 +78,44 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
         title: 'Format Error',
         description:
           'The response content is not valid JSON and cannot be minified.',
+        variant: 'warning',
+        confirmText: 'Got it',
+        showCancel: false
+      });
+    }
+  };
+
+  const handleBeautifyRequestBody = () => {
+    try {
+      const parsed = JSON.parse(formData.requestBody);
+      setFormData({
+        ...formData,
+        requestBody: JSON.stringify(parsed, null, 2)
+      });
+    } catch {
+      confirm({
+        title: 'Format Error',
+        description:
+          'The request body is not valid JSON and cannot be beautified.',
+        variant: 'warning',
+        confirmText: 'Got it',
+        showCancel: false
+      });
+    }
+  };
+
+  const handleMinifyRequestBody = () => {
+    try {
+      const parsed = JSON.parse(formData.requestBody);
+      setFormData({
+        ...formData,
+        requestBody: JSON.stringify(parsed)
+      });
+    } catch {
+      confirm({
+        title: 'Format Error',
+        description:
+          'The request body is not valid JSON and cannot be minified.',
         variant: 'warning',
         confirmText: 'Got it',
         showCancel: false
@@ -170,7 +213,201 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        {/* Request Modification Toggle */}
+        <div className="flex items-center justify-between p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+          <div className="flex items-center gap-3">
+            <Send className="w-5 h-5 text-amber-500" />
+            <div>
+              <label
+                htmlFor="modify-request"
+                className="text-sm font-semibold text-foreground cursor-pointer block"
+              >
+                Modify Request Before Sending
+              </label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Intercept and modify the request instead of mocking the response
+              </p>
+            </div>
+          </div>
+          <Switch
+            id="modify-request"
+            checked={formData.modifyRequest}
+            onCheckedChange={(checked) =>
+              setFormData({ ...formData, modifyRequest: checked })
+            }
+          />
+        </div>
+
+        {/* Request Modification Fields */}
+        {formData.modifyRequest && (
+          <div className="space-y-4 p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-amber-500" />
+                HTTP Method
+              </label>
+              <Select
+                value={formData.requestMethod}
+                onValueChange={(val: string | number) =>
+                  setFormData({
+                    ...formData,
+                    requestMethod: String(val) as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+                  })
+                }
+              >
+                <SelectGroup label="HTTP Methods">
+                  <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="POST">POST</SelectItem>
+                  <SelectItem value="PUT">PUT</SelectItem>
+                  <SelectItem value="DELETE">DELETE</SelectItem>
+                  <SelectItem value="PATCH">PATCH</SelectItem>
+                </SelectGroup>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Override the HTTP method of the request
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-amber-500" />
+                Query Parameters
+              </label>
+              <Input
+                type="text"
+                value={formData.queryParams}
+                onChange={(e) =>
+                  setFormData({ ...formData, queryParams: e.target.value })
+                }
+                placeholder="e.g. key1=value1&key2=value2"
+                className="bg-background/50 border-border/50 focus:border-amber-500/50 font-mono text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Add or override URL query parameters (format: key1=value1&key2=value2)
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
+                  <Code2 className="w-4 h-4 text-amber-500" />
+                  Request Body (JSON)
+                </label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 text-[11px] px-2 gap-1.5"
+                    onClick={handleBeautifyRequestBody}
+                  >
+                    Beautify
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 text-[11px] px-2"
+                    onClick={handleMinifyRequestBody}
+                  >
+                    Minify
+                  </Button>
+                </div>
+              </div>
+              <div className="relative group border border-border/50 rounded-md overflow-hidden focus-within:ring-1 focus-within:ring-amber-500/50 focus-within:border-amber-500/50 transition-all bg-card">
+                <CodeMirror
+                  value={formData.requestBody}
+                  height="min(20vh, 300px)"
+                  theme={oneDark}
+                  extensions={[
+                    json(),
+                    EditorView.lineWrapping,
+                    EditorView.theme({
+                      '&': {
+                        backgroundColor: 'transparent !important',
+                        lineHeight: '1.5',
+                        fontSize: '12px'
+                      },
+                      '.cm-gutters': {
+                        backgroundColor: 'transparent !important',
+                        border: 'none'
+                      },
+                      '.cm-content': {
+                        padding: '8px 0',
+                        height: 'auto !important'
+                      },
+                      '.cm-cursor': {
+                        height: '1.2em !important'
+                      },
+                      '.cm-placeholder': {
+                        position: 'absolute !important',
+                        left: '8px',
+                        color: 'var(--color-muted-foreground) !important',
+                        opacity: '0.4',
+                        whiteSpace: 'pre-wrap',
+                        pointerEvents: 'none'
+                      },
+                      '.cm-line': {
+                        position: 'relative',
+                        lineHeight: '1.5',
+                        padding: '0 8px'
+                      },
+                      '.cm-scroller::-webkit-scrollbar': {
+                        width: '6px',
+                        height: '6px'
+                      },
+                      '.cm-scroller::-webkit-scrollbar-track': {
+                        background: 'transparent'
+                      },
+                      '.cm-scroller::-webkit-scrollbar-thumb': {
+                        background: 'var(--color-border)',
+                        borderRadius: '10px'
+                      },
+                      '.cm-scroller::-webkit-scrollbar-thumb:hover': {
+                        background: '#334155'
+                      }
+                    })
+                  ]}
+                  onChange={(value) =>
+                    setFormData({ ...formData, requestBody: value })
+                  }
+                  placeholder='{\n  "key": "value"\n}'
+                  className="text-xs font-mono"
+                  basicSetup={{
+                    lineNumbers: false,
+                    foldGutter: false,
+                    dropCursor: true,
+                    allowMultipleSelections: false,
+                    indentOnInput: true,
+                    bracketMatching: true,
+                    closeBrackets: true,
+                    autocompletion: true,
+                    rectangularSelection: true,
+                    crosshairCursor: true,
+                    highlightActiveLine: false,
+                    highlightSelectionMatches: true,
+                    searchKeymap: false,
+                    historyKeymap: false,
+                    drawSelection: false,
+                    tabSize: 2
+                  }}
+                />
+                <div className="flex items-center justify-end px-3 py-1.5 bg-background/40 border-t border-border/30">
+                  <span className="text-[10px] text-muted-foreground/60 font-mono">
+                    {formData.requestBody.length} characters
+                  </span>
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Replace the request body with this JSON content
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!formData.modifyRequest && (
+          <>
+            <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-foreground/80 flex items-center gap-2">
               <Activity className="w-4 h-4 text-primary" />
@@ -432,6 +669,8 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
             </div>
           </div>
         </div>
+          </>
+        )}
 
         <div className="flex items-center justify-between p-4 rounded-lg bg-background/30 border border-border/30">
           <div className="flex items-center gap-3">
