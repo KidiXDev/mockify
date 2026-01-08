@@ -248,12 +248,16 @@ export function RuleEditor({ initialData, onSave, onCancel }: RuleEditorProps) {
               </label>
               <Select
                 value={formData.requestMethod}
-                onValueChange={(val: string | number) =>
-                  setFormData({
-                    ...formData,
-                    requestMethod: String(val) as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
-                  })
-                }
+                onValueChange={(val: string | number) => {
+                  const method = String(val);
+                  // Validate that the method is one of the allowed values
+                  if (['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+                    setFormData({
+                      ...formData,
+                      requestMethod: method as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
+                    });
+                  }
+                }}
               >
                 <SelectGroup label="HTTP Methods">
                   <SelectItem value="GET">GET</SelectItem>

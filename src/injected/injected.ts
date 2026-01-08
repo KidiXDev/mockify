@@ -31,6 +31,13 @@ interface MockifyConfig {
   const originalXHROpen = XMLHttpRequest.prototype.open;
   const originalXHRSend = XMLHttpRequest.prototype.send;
 
+  // Extended XMLHttpRequest type with mockify properties
+  type MockifyXHR = XMLHttpRequest & {
+    _mockifyUrl: string;
+    _mockifyOriginalUrl: string;
+    _mockifyMethod: string;
+  };
+
   function findMatchingRule(url: string): MockRule | undefined {
     if (!config.enabled || !configReceived) return undefined;
     return config.rules.find((rule) => {
@@ -109,14 +116,9 @@ interface MockifyConfig {
   function prepareRequestBody(rule: MockRule, originalBody?: BodyInit | null | undefined): BodyInit | null | undefined {
     if (!rule.modifyRequest || !rule.requestBody) return originalBody;
     
-    try {
-      // Parse and re-stringify to validate JSON
-      const parsed = JSON.parse(rule.requestBody);
-      return JSON.stringify(parsed);
-    } catch (e) {
-      console.error('[Mockify] Invalid request body JSON:', e);
-      return originalBody;
-    }
+    // Return the pre-validated request body string
+    // Note: Validation should be done when rule is saved, not on every request
+    return rule.requestBody;
   }
 
   const sleep = (ms: number) =>
@@ -216,9 +218,10 @@ interface MockifyConfig {
       }
     }
 
-    (this as XMLHttpRequest & { _mockifyUrl: string; _mockifyOriginalUrl: string; _mockifyMethod: string })._mockifyUrl = modifiedUrl;
-    (this as XMLHttpRequest & { _mockifyUrl: string; _mockifyOriginalUrl: string; _mockifyMethod: string })._mockifyOriginalUrl = urlString;
-    (this as XMLHttpRequest & { _mockifyUrl: string; _mockifyOriginalUrl: string; _mockifyMethod: string })._mockifyMethod = modifiedMethod;
+    const xhr = this as MockifyXHR;
+    xhr._mockifyUrl = modifiedUrl;
+    xhr._mockifyOriginalUrl = urlString;
+    xhr._mockifyMethod = modifiedMethod;
 
     return originalXHROpen.apply(this, [
       modifiedMethod,
@@ -232,7 +235,7 @@ interface MockifyConfig {
   XMLHttpRequest.prototype.send = function (
     body?: Document | XMLHttpRequestBodyInit | null
   ): void {
-    const xhr = this as XMLHttpRequest & { _mockifyUrl: string; _mockifyOriginalUrl: string; _mockifyMethod: string };
+    const xhr = this as MockifyXHR;
     const url = xhr._mockifyOriginalUrl || xhr._mockifyUrl;
 
     const matchingRule = findMatchingRule(url);
