@@ -50,6 +50,8 @@
    # or
    bun run build
    ```
+   
+   **Note:** The default `build` command creates a Firefox-compatible build by removing `type: "module"` from the service worker. If you need a Chrome-only build (with ES modules), use `npm run build:chrome` instead.
 
 4. Load the extension in your browser:
    
