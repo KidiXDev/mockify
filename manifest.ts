@@ -9,7 +9,7 @@ const manifest: ManifestV3Export = {
   permissions: ['storage', 'activeTab', 'unlimitedStorage'],
   host_permissions: ['<all_urls>'],
 
-  // @ts-ignore - browser_specific_settings is required for Firefox but not in the type
+  // @ts-expect-error - browser_specific_settings is required for Firefox but not in the type
   browser_specific_settings: {
     gecko: {
       id: 'mockify@kidixdev.com',
