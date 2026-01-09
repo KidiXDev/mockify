@@ -1,6 +1,6 @@
-import type { ManifestV3Export } from '@crxjs/vite-plugin';
+import { defineManifest } from '@crxjs/vite-plugin';
 
-const manifest: ManifestV3Export = {
+export default defineManifest({
   manifest_version: 3,
   name: 'Mockify',
   version: '1.1.0',
@@ -12,14 +12,14 @@ const manifest: ManifestV3Export = {
   // @ts-expect-error - browser_specific_settings is required for Firefox but not in the type
   browser_specific_settings: {
     gecko: {
-      id: 'mockify@kidixdev.com',
+      id: 'mockify@logiclab.id',
       strict_min_version: '109.0'
     }
   },
 
   background: {
     service_worker: 'src/background/background.ts',
-    type: 'module'
+    scripts: ['src/background/background.ts']
   },
 
   content_scripts: [
@@ -46,6 +46,4 @@ const manifest: ManifestV3Export = {
     '128': 'logo.png',
     '1024': 'logo.png'
   }
-};
-
-export default manifest;
+});
