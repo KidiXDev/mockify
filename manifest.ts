@@ -9,6 +9,14 @@ const manifest: ManifestV3Export = {
   permissions: ['storage', 'activeTab', 'unlimitedStorage'],
   host_permissions: ['<all_urls>'],
 
+  // @ts-ignore - browser_specific_settings is required for Firefox but not in the type
+  browser_specific_settings: {
+    gecko: {
+      id: 'mockify@kidixdev.com',
+      strict_min_version: '109.0'
+    }
+  },
+
   background: {
     service_worker: 'src/background/background.ts',
     type: 'module'
@@ -33,8 +41,9 @@ const manifest: ManifestV3Export = {
   options_page: 'options.html',
 
   icons: {
-    '128': 'logo.png',
-    '1024': 'logo.png'
+    '48': 'logo.png',
+    '96': 'logo.png',
+    '128': 'logo.png'
   }
 };
 
