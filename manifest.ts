@@ -43,7 +43,8 @@ const manifest: ManifestV3Export = {
   icons: {
     '48': 'logo.png',
     '96': 'logo.png',
-    '128': 'logo.png'
+    '128': 'logo.png',
+    '1024': 'logo.png'
   }
 };
 
