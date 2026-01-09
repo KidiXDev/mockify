@@ -12,7 +12,7 @@ const path = require('path');
 const manifestPath = path.join(__dirname, '../dist/manifest.json');
 
 if (!fs.existsSync(manifestPath)) {
-  console.error('manifest.json not found in dist folder');
+  console.error('Error: manifest.json not found at dist/manifest.json');
   process.exit(1);
 }
 
@@ -22,7 +22,8 @@ const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 if (manifest.background && manifest.background.type === 'module') {
   delete manifest.background.type;
   console.log('✓ Removed type: "module" from background service worker for Firefox compatibility');
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  console.log('✓ Firefox-compatible manifest.json created');
+} else {
+  console.log('ℹ No modifications needed - manifest is already Firefox-compatible');
 }
-
-fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-console.log('✓ Firefox-compatible manifest.json created');
