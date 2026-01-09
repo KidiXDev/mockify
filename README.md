@@ -1,12 +1,16 @@
 # Mockify
 
-**Mockify** is a powerful, developer-centric Chrome Extension designed to intercept and modify HTTP network requests in real-time. Whether you are debugging frontend issues, simulating edge cases, or developing without a backend, Mockify gives you full control over your application's data flow.
+**Mockify** is a powerful, developer-centric browser extension designed to intercept and modify HTTP network requests in real-time. Whether you are debugging frontend issues, simulating edge cases, or developing without a backend, Mockify gives you full control over your application's data flow.
+
+**Supported Browsers:** Chrome, Firefox, and other Chromium-based browsers.
 
 ## Getting Started
 
 ### Installation (Stable Release)
 
-1. Go to the [Reactions Releases](https://github.com/KidiXDev/mockify/releases) page.
+#### Chrome / Chromium-based Browsers
+
+1. Go to the [Mockify Releases](https://github.com/KidiXDev/mockify/releases) page.
 2. Download the latest `mockify-x.x.x.zip` file.
 3. Extract the contents of the ZIP file to a permanent folder on your computer.
 4. Load the extension in Chrome:
@@ -14,6 +18,16 @@
    - Enable **Developer mode** in the top right corner.
    - Click the **Load unpacked** button.
    - Select the extracted folder (the one containing `manifest.json`).
+
+#### Firefox
+
+1. Go to the [Mockify Releases](https://github.com/KidiXDev/mockify/releases) page.
+2. Download the latest `mockify-x.x.x.zip` file.
+3. Extract the contents of the ZIP file to a permanent folder on your computer.
+4. Load the extension in Firefox:
+   - Open Firefox and navigate to `about:debugging#/runtime/this-firefox`.
+   - Click **Load Temporary Add-on**.
+   - Navigate to the extracted folder and select the `manifest.json` file.
 
 ### Installation (Development)
 
@@ -25,19 +39,30 @@
 
 2. Install dependencies:
    ```bash
+   npm install
+   # or
    bun install
    ```
 
-3. Run the development server:
+3. Build the extension:
    ```bash
-   bun dev
+   npm run build
+   # or
+   bun run build
    ```
 
-4. Load the extension in Chrome:
+4. Load the extension in your browser:
+   
+   **Chrome / Chromium-based browsers:**
    - Go to `chrome://extensions/`
    - Enable **Developer mode**.
    - Click **Load unpacked**.
    - Select the `dist` folder generated in your project directory.
+   
+   **Firefox:**
+   - Go to `about:debugging#/runtime/this-firefox`
+   - Click **Load Temporary Add-on**.
+   - Navigate to the `dist` folder and select the `manifest.json` file.
 
 ## Usage
 

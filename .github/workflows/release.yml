@@ -32,17 +32,17 @@ jobs:
       - name: Install deps
         run: bun install
 
-      - name: Build
-        run: bun run build
+      - name: Build Chrome
+        run: bun run build:chrome
 
-      - name: Read version from manifest
+      - name: Read version
         id: version
         run: echo "version=$(jq -r .version dist/manifest.json)" >> $GITHUB_OUTPUT
 
-      - name: Zip dist contents
+      - name: Zip Chrome
         run: |
           cd dist
-          zip -r ../mockify-${{ steps.version.outputs.version }}.zip .
+          zip -r ../mockify-chrome-${{ steps.version.outputs.version }}.zip .
           cd -
 
       - name: Restore CRX private key
@@ -51,10 +51,19 @@ jobs:
           echo "${{ secrets.PRIVATE_KEY_BASE64 }}" | base64 -d > private.pem
           chmod 600 private.pem
 
-      - name: Pack CRX with stable key
+      - name: Pack CRX
         run: bunx crx3 dist --key private.pem -o mockify.crx
 
-      - name: Create GitHub Release (auto-creates tag if missing)
+      - name: Build Firefox
+        run: bun run build:firefox
+
+      - name: Zip Firefox
+        run: |
+          cd dist
+          zip -r ../mockify-firefox-${{ steps.version.outputs.version }}.zip .
+          cd -
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
@@ -65,7 +74,8 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            mockify-${{ steps.version.outputs.version }}.zip
+            mockify-chrome-${{ steps.version.outputs.version }}.zip
+            mockify-firefox-${{ steps.version.outputs.version }}.zip
             mockify.crx
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

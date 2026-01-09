@@ -3,10 +3,16 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vite';
-import manifest from './manifest';
+import manifest from './manifest.config';
+
+const browser = process.env.BROWSER || 'chrome';
 
 export default defineConfig({
-  plugins: [react(), crx({ manifest }), tailwindcss()],
+  plugins: [
+    react(),
+    crx({ manifest, browser: browser as 'chrome' | 'firefox' }),
+    tailwindcss()
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')
